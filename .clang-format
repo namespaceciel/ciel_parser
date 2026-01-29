@@ -1,0 +1,10 @@
+BasedOnStyle: Google
+Language: Cpp
+ColumnLimit: 120
+FixNamespaceComments: true
+InsertBraces: true
+InsertNewlineAtEOF: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+QualifierAlignment: Custom
+QualifierOrder: ['friend', 'inline', 'static', 'constexpr', 'const', 'volatile', 'type']
