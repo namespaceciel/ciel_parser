@@ -15,7 +15,7 @@ inline quill::Logger* const g_quill_logger = []() {
   quill::Logger* res = quill::Frontend::create_or_get_logger(
       "root", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1"),
       quill::PatternFormatterOptions{"%(time) [%(thread_id)] %(short_source_location:<20) %(log_level:<9) %(message)",
-                                     "%H:%M:%S.%Qns", quill::Timezone::GmtTime});
+                                     "%H:%M:%S.%Qns", quill::Timezone::LocalTime});
   res->set_log_level(quill::LogLevel::TraceL3);
   return res;
 }();
