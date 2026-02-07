@@ -20,7 +20,7 @@ class WeiBo {
  public:
   static std::vector<std::string> GetUrls(const std::string& message) {
     static const std::regex pattern(R"((https?://(?:m\.)?weibo\.(?:com|cn)/(?!u/)[^\s]+))");
-    const std::vector<std::string> urls(std::sregex_token_iterator(message.begin(), message.end(), pattern, 0),
+    const std::vector<std::string> urls(std::sregex_token_iterator(message.begin(), message.end(), pattern),
                                         std::sregex_token_iterator());
     return urls;
   }

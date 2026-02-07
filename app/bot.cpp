@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "config.hpp"
+#include "pixiv.hpp"
 #include "quill.hpp"
 #include "twitter.hpp"
 #include "weibo.hpp"
@@ -22,6 +23,7 @@ class Bot final : public tgbotxx::Bot {
     OnCustomPlatformMessage<cielparser::XHS>(message);
     OnCustomPlatformMessage<cielparser::WeiBo>(message);
     OnCustomPlatformMessage<cielparser::Twitter>(message);
+    OnCustomPlatformMessage<cielparser::Pixiv>(message);
   }
 
   template <class Platform>
@@ -33,6 +35,8 @@ class Bot final : public tgbotxx::Bot {
         return "WeiBo";
       } else if constexpr (std::is_same_v<Platform, cielparser::Twitter>) {
         return "Twitter";
+      } else if constexpr (std::is_same_v<Platform, cielparser::Pixiv>) {
+        return "Pixiv";
       } else {
         static_assert(false);
       }
