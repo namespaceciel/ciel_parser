@@ -18,16 +18,18 @@ class Bot final : public tgbotxx::Bot {
 
  private:
   void onAnyMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) override {
-    LOG_INFO("Received message {} from {}", message->text, message->chat->id);
+    const std::string message_content = !message->text.empty() ? message->text : message->caption;
+    LOG_INFO("Received message {} from {}", message_content, message->chat->id);
 
-    OnCustomPlatformMessage<cielparser::XHS>(message);
-    OnCustomPlatformMessage<cielparser::WeiBo>(message);
-    OnCustomPlatformMessage<cielparser::Twitter>(message);
-    OnCustomPlatformMessage<cielparser::Pixiv>(message);
+    OnCustomPlatformMessage<cielparser::XHS>(message, message_content);
+    OnCustomPlatformMessage<cielparser::WeiBo>(message, message_content);
+    OnCustomPlatformMessage<cielparser::Twitter>(message, message_content);
+    OnCustomPlatformMessage<cielparser::Pixiv>(message, message_content);
   }
 
   template <class Platform>
-  void OnCustomPlatformMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) const {
+  void OnCustomPlatformMessage(const tgbotxx::Ptr<tgbotxx::Message>& message,
+                               const std::string& message_content) const {
     constexpr std::string_view PlatformName = []() {
       if constexpr (std::is_same_v<Platform, cielparser::XHS>) {
         return "XHS";
@@ -42,7 +44,7 @@ class Bot final : public tgbotxx::Bot {
       }
     }();
 
-    for (const auto urls = Platform::GetUrls(message->text); const auto& url : urls) {
+    for (const auto urls = Platform::GetUrls(message_content); const auto& url : urls) {
       std::jthread{[=, this] {
         const auto download_links = Platform::GetDownloadLinks(url);
         LOG_INFO("Processing URL {} in {}, get {} download_links", url, PlatformName, download_links.size());
