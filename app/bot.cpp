@@ -7,6 +7,7 @@
 #include "pixiv.hpp"
 #include "quill.hpp"
 #include "twitter.hpp"
+#include "utils.hpp"
 #include "weibo.hpp"
 #include "xhs.hpp"
 
@@ -54,7 +55,7 @@ class Bot final : public tgbotxx::Bot {
             if (const auto downloaded_filepath = Platform::DownloadFile(download_link, config_.download_dir)) {
               LOG_INFO("Uploading file {}", downloaded_filepath->string());
               cpr::File document(downloaded_filepath->string());
-              api()->sendDocument(message->chat->id, document);
+              cielparser::TryNTimes<3>([&]() { api()->sendDocument(message->chat->id, document); });
             }
           }}.detach();
         }
