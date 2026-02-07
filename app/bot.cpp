@@ -5,6 +5,7 @@
 
 #include "config.hpp"
 #include "quill.hpp"
+#include "twitter.hpp"
 #include "weibo.hpp"
 #include "xhs.hpp"
 
@@ -20,6 +21,7 @@ class Bot final : public tgbotxx::Bot {
 
     OnCustomPlatformMessage<cielparser::XHS>(message);
     OnCustomPlatformMessage<cielparser::WeiBo>(message);
+    OnCustomPlatformMessage<cielparser::Twitter>(message);
   }
 
   template <class Platform>
@@ -29,6 +31,8 @@ class Bot final : public tgbotxx::Bot {
         return "XHS";
       } else if constexpr (std::is_same_v<Platform, cielparser::WeiBo>) {
         return "WeiBo";
+      } else if constexpr (std::is_same_v<Platform, cielparser::Twitter>) {
+        return "Twitter";
       } else {
         static_assert(false);
       }
