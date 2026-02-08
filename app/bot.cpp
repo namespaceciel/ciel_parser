@@ -13,7 +13,8 @@
 
 class Bot final : public tgbotxx::Bot {
  public:
-  explicit Bot(cielparser::Config config) : tgbotxx::Bot(config.bot_token), config_(std::move(config)) {}
+  explicit Bot(cielparser::Config config)
+      : tgbotxx::Bot(config.bot_token), download_dir_(std::move(config.download_dir)) {}
 
   ~Bot() override = default;
 
@@ -54,7 +55,7 @@ class Bot final : public tgbotxx::Bot {
         for (auto&& download_link : download_links) {
           std::jthread{[this, download_link = std::move(download_link), message] {
             LOG_INFO("Try downloading {}", download_link);
-            if (const auto downloaded_filepath = Platform::DownloadFile(download_link, config_.download_dir)) {
+            if (const auto downloaded_filepath = Platform::DownloadFile(download_link, download_dir_)) {
               LOG_INFO("Uploading file {}", downloaded_filepath->string());
               cpr::File document(downloaded_filepath->string());
               cielparser::TryNTimes<3>([&] { api()->sendDocument(message->chat->id, document); });
@@ -65,7 +66,7 @@ class Bot final : public tgbotxx::Bot {
     }
   }
 
-  cielparser::Config config_;
+  std::filesystem::path download_dir_;
 };
 
 int main() {
