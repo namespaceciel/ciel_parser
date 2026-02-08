@@ -19,8 +19,10 @@ class Bot final : public tgbotxx::Bot {
 
  private:
   void onAnyMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) override {
-    const std::string message_content = !message->text.empty() ? message->text : message->caption;
-    LOG_INFO("Received message {} from {}", message_content, message->chat->id);
+    const std::string_view message_content = !message->text.empty() ? message->text : message->caption;
+    const std::string_view user_name =
+        message->chat->type == tgbotxx::Chat::Type::Private ? message->from->username : message->chat->username;
+    LOG_INFO("Received message {} from @{}", message_content, user_name);
 
     OnCustomPlatformMessage<cielparser::XHS>(message, message_content);
     OnCustomPlatformMessage<cielparser::WeiBo>(message, message_content);
@@ -30,7 +32,7 @@ class Bot final : public tgbotxx::Bot {
 
   template <class Platform>
   void OnCustomPlatformMessage(const tgbotxx::Ptr<tgbotxx::Message>& message,
-                               const std::string& message_content) const {
+                               const std::string_view message_content) const {
     constexpr std::string_view PlatformName = []() {
       if constexpr (std::is_same_v<Platform, cielparser::XHS>) {
         return "XHS";

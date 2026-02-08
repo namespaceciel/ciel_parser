@@ -18,10 +18,11 @@ namespace cielparser {
 
 class WeiBo {
  public:
-  static std::vector<std::string> GetUrls(const std::string& message) {
+  static std::vector<std::string> GetUrls(const std::string_view message) {
     static const std::regex pattern(R"((https?://(?:m\.)?weibo\.(?:com|cn)/(?!u/)[^\s]+))");
-    const std::vector<std::string> urls(std::sregex_token_iterator(message.begin(), message.end(), pattern),
-                                        std::sregex_token_iterator());
+    using sv_token_iterator = std::regex_token_iterator<std::string_view::const_iterator>;
+    const std::vector<std::string> urls(sv_token_iterator(message.begin(), message.end(), pattern),
+                                        sv_token_iterator());
     return urls;
   }
 
