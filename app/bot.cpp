@@ -33,7 +33,7 @@ class Bot final : public tgbotxx::Bot {
   template <class Platform>
   void OnCustomPlatformMessage(const tgbotxx::Ptr<tgbotxx::Message>& message,
                                const std::string_view message_content) const {
-    constexpr std::string_view PlatformName = []() {
+    constexpr std::string_view platform_name = [] {
       if constexpr (std::is_same_v<Platform, cielparser::XHS>) {
         return "XHS";
       } else if constexpr (std::is_same_v<Platform, cielparser::WeiBo>) {
@@ -47,17 +47,17 @@ class Bot final : public tgbotxx::Bot {
       }
     }();
 
-    for (const auto urls = Platform::GetUrls(message_content); const auto& url : urls) {
-      std::jthread{[=, this] {
-        const auto download_links = Platform::GetDownloadLinks(url);
-        LOG_INFO("Processing URL {} in {}, get {} download_links", url, PlatformName, download_links.size());
-        for (const auto& download_link : download_links) {
-          std::jthread{[=, this] {
+    for (auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
+      std::jthread{[this, url = std::move(url), message, platform_name] {
+        auto download_links = Platform::GetDownloadLinks(url);
+        LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
+        for (auto&& download_link : download_links) {
+          std::jthread{[this, download_link = std::move(download_link), message] {
             LOG_INFO("Try downloading {}", download_link);
             if (const auto downloaded_filepath = Platform::DownloadFile(download_link, config_.download_dir)) {
               LOG_INFO("Uploading file {}", downloaded_filepath->string());
               cpr::File document(downloaded_filepath->string());
-              cielparser::TryNTimes<3>([&]() { api()->sendDocument(message->chat->id, document); });
+              cielparser::TryNTimes<3>([&] { api()->sendDocument(message->chat->id, document); });
             }
           }}.detach();
         }

@@ -10,7 +10,7 @@
 
 namespace cielparser {
 
-inline quill::Logger* const g_quill_logger = []() {
+inline quill::Logger* const g_quill_logger = [] {
   quill::Backend::start();
   quill::Logger* res = quill::Frontend::create_or_get_logger(
       "root", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1"),
