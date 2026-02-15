@@ -87,5 +87,6 @@ int main() {
   cielparser::Config config = nlohmann::json::parse(std::ifstream{config_path});
   std::filesystem::create_directories(config.download_dir);
   Bot bot(std::move(config));
+  LOG_INFO("Starting bot...");
   bot.start();
 }

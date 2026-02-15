@@ -20,4 +20,10 @@ void TryNTimes(auto&& f) {
   }
 }
 
+inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view message, const std::regex& pattern) {
+  using sv_token_iterator = std::regex_token_iterator<std::string_view::const_iterator>;
+  const std::vector<std::string> urls(sv_token_iterator(message.begin(), message.end(), pattern), sv_token_iterator());
+  return urls;
+}
+
 }  // namespace cielparser

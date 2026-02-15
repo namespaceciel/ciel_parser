@@ -14,17 +14,16 @@
 #include <vector>
 
 #include "quill.hpp"
+#include "utils.hpp"
 
 namespace cielparser {
 
 class XHS {
+  inline static const std::regex url_pattern{R"(https?://(?:www\.)?(?:xiaohongshu|xhslink)\.com/[\w\-./?=&%]+)"};
+
  public:
   static std::vector<std::string> GetUrls(const std::string_view message) {
-    static const std::regex pattern(R"(https?://(?:www\.)?(?:xiaohongshu|xhslink)\.com/[\w\-./?=&%]+)");
-    using sv_token_iterator = std::regex_token_iterator<std::string_view::const_iterator>;
-    const std::vector<std::string> urls(sv_token_iterator(message.begin(), message.end(), pattern),
-                                        sv_token_iterator());
-    return urls;
+    return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
   static std::vector<std::string> GetDownloadLinks(const std::string_view url) {

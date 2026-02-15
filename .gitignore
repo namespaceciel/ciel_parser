@@ -5,3 +5,4 @@ config.json
 CMakeUserPresets.json
 downloads/
 .idea/
+.DS_Store
