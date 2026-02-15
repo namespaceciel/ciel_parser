@@ -53,11 +53,11 @@ class Bot final : public tgbotxx::Bot {
     }();
 
     for (auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
-      std::jthread{[this, url = std::move(url), message, platform_name] {
+      std::thread{[this, url = std::move(url), message, platform_name] {
         auto download_links = Platform::GetDownloadLinks(url);
         LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
         for (auto&& download_link : download_links) {
-          std::jthread{[this, download_link = std::move(download_link), message] {
+          std::thread{[this, download_link = std::move(download_link), message] {
             LOG_INFO("Try downloading {}", download_link);
             if (const auto downloaded_filepath = Platform::DownloadFile(download_link, download_dir_)) {
               LOG_INFO("Uploading file {}", downloaded_filepath->string());
