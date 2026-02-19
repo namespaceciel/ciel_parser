@@ -13,10 +13,11 @@ namespace cielparser {
 inline quill::Logger* const g_quill_logger = [] {
   const quill::BackendOptions backend_options{.check_printable_char = nullptr};
   quill::Backend::start(backend_options);
+  quill::PatternFormatterOptions formatter_options;
+  formatter_options.format_pattern = "%(time) %(short_source_location:<16) %(log_level:<9) %(message)";
+  formatter_options.add_metadata_to_multi_line_logs = false;
   quill::Logger* res = quill::Frontend::create_or_get_logger(
-      "root", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1"),
-      quill::PatternFormatterOptions{"%(time) [%(thread_id)] %(short_source_location:<20) %(log_level:<9) %(message)",
-                                     "%H:%M:%S.%Qns", quill::Timezone::LocalTime});
+      "root", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1"), formatter_options);
   res->set_log_level(quill::LogLevel::TraceL3);
   return res;
 }();
