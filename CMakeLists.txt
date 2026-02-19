@@ -43,5 +43,5 @@ target_link_libraries(ciel_parser INTERFACE
 add_executable(ciel_parser_bot app/bot.cpp)
 target_link_libraries(ciel_parser_bot PRIVATE ciel_parser)
 
-add_executable(ciel_parser_test test/test.cpp )
+add_executable(ciel_parser_test test/test.cpp)
 target_link_libraries(ciel_parser_test PRIVATE ciel_parser)
