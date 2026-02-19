@@ -63,12 +63,7 @@ class Twitter {
       LOG_ERROR("Accessing {} failed", final_download_link);
       return std::nullopt;
     }
-
-    const auto ts = std::chrono::system_clock::now().time_since_epoch().count();
-    auto filepath = download_dir / std::format("{}{}", ts, ext);
-    std::ofstream(filepath, std::ios::binary) << r.text;
-    LOG_INFO("Downloaded {} in {}", final_download_link, filepath.string());
-    return std::make_optional(std::move(filepath));
+    return SaveContents(download_dir, ext, download_link, r.text);
   }
 };
 

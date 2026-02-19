@@ -26,4 +26,21 @@ inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view
   return urls;
 }
 
+inline std::atomic<size_t> g_counter{0};
+
+inline size_t GenerateUniqueId() { return g_counter.fetch_add(1, std::memory_order_relaxed); }
+
+inline std::filesystem::path SaveContents(const std::filesystem::path& download_dir, const std::string_view ext,
+                                          const std::string_view download_link, const std::string_view file_contents) {
+  while (true) {
+    auto filepath = download_dir / std::format("{}{}", cielparser::GenerateUniqueId(), ext);
+    if (std::filesystem::exists(filepath)) {
+      continue;
+    }
+    std::ofstream(filepath, std::ios::binary) << file_contents;
+    LOG_INFO("Downloaded {} in {}", download_link, filepath.string());
+    return filepath;
+  }
+}
+
 }  // namespace cielparser

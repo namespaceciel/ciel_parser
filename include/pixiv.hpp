@@ -59,11 +59,7 @@ class Pixiv {
     }
 
     const auto ext = std::filesystem::path(download_link).extension().string();
-    const auto ts = std::chrono::system_clock::now().time_since_epoch().count();
-    auto filepath = download_dir / std::format("{}{}", ts, ext);
-    std::ofstream(filepath, std::ios::binary) << r.text;
-    LOG_INFO("Downloaded {} in {}", download_link, filepath.string());
-    return std::make_optional(std::move(filepath));
+    return SaveContents(download_dir, ext, download_link, r.text);
   }
 };
 
