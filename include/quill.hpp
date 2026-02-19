@@ -11,7 +11,8 @@
 namespace cielparser {
 
 inline quill::Logger* const g_quill_logger = [] {
-  quill::Backend::start();
+  const quill::BackendOptions backend_options{.check_printable_char = nullptr};
+  quill::Backend::start(backend_options);
   quill::Logger* res = quill::Frontend::create_or_get_logger(
       "root", quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1"),
       quill::PatternFormatterOptions{"%(time) [%(thread_id)] %(short_source_location:<20) %(log_level:<9) %(message)",
