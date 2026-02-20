@@ -73,42 +73,76 @@ class XHS {
         return res;
       }
 
-      for (const auto& item : data["note"]["noteDetailMap"][nid]["note"]["imageList"]) {
-        std::string raw_url;
-        if (item.contains("urlPre")) {
-          raw_url = item["urlPre"];
-        } else if (item.contains("urlDefault")) {
-          raw_url = item["urlDefault"];
-        }
+      const auto& note_data = data["note"]["noteDetailMap"][nid]["note"];
 
-        if (const std::string key = ExtractImageKey(raw_url); !key.empty()) {
-          res.emplace_back(std::format("https://ci.xiaohongshu.com/{}", key));
+      const auto extract_video = [](const nlohmann::json& stream) -> std::string {
+        if (!stream.is_object()) {
+          return "";
+        }
+        for (const char* codec : {"h264", "h265", "av1"}) {
+          if (stream.contains(codec) && stream[codec].is_array() && !stream[codec].empty()) {
+            return stream[codec][0].value("masterUrl", "");
+          }
+        }
+        return "";
+      };
+
+      if (note_data.value("type", "") == "video" && note_data.contains("video")) {
+        if (note_data["video"].contains("media") && note_data["video"]["media"].contains("stream")) {
+          if (std::string video_url = extract_video(note_data["video"]["media"]["stream"]); !video_url.empty()) {
+            res.emplace_back(std::move(video_url));
+            return res;
+          }
         }
       }
-      return res;
 
+      if (note_data.contains("imageList") && note_data["imageList"].is_array()) {
+        for (const auto& item : note_data["imageList"]) {
+          if (item.contains("stream")) {
+            if (std::string live_video_url = extract_video(item["stream"]); !live_video_url.empty()) {
+              res.emplace_back(std::move(live_video_url));
+              continue;
+            }
+          }
+
+          std::string raw_url;
+          if (item.contains("urlPre")) {
+            raw_url = item["urlPre"];
+          } else if (item.contains("urlDefault")) {
+            raw_url = item["urlDefault"];
+          } else {
+            LOG_WARNING("raw_url not found");
+            continue;
+          }
+
+          if (const std::string key = ExtractImageKey(raw_url); !key.empty()) {
+            res.emplace_back(std::format("https://ci.xiaohongshu.com/{}", key));
+          }
+        }
+      }
     } catch (std::exception& e) {
       LOG_ERROR(R"(e.what(): {})", e.what());
-      return res;
     }
+    return res;
   }
 
   static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    auto r = cpr::Get(cpr::Url{std::string{download_link} += "?imageView2/format/png"});
-    if (r.status_code != 200) {
-      r = cpr::Get(cpr::Url{download_link});
-    }
+    auto r = cpr::Get(cpr::Url{download_link});
     if (r.status_code != 200) {
       LOG_ERROR("Accessing {} failed", download_link);
       return std::nullopt;
     }
+    if (r.header["Content-Type"].contains("image/")) {
+      if (auto r_png = cpr::Get(cpr::Url{std::string{download_link} += "?imageView2/format/png"});
+          r_png.status_code == 200) {
+        r = std::move(r_png);
+      }
+    }
 
-    static const std::map<std::string, std::string> mime_map = {
-        {"image/jpeg", ".jpeg"}, {"image/png", ".png"}, {"image/webp", ".webp"}, {"video/mp4", ".mp4"}};
     std::string ext = ".bin";
     for (const auto& [type, suffix] : mime_map) {
-      if (r.header["content-type"].find(type) != std::string::npos) {
+      if (r.header["Content-Type"].find(type) != std::string::npos) {
         ext = suffix;
         break;
       }
@@ -117,6 +151,9 @@ class XHS {
   }
 
  private:
+  inline static const std::map<std::string, std::string> mime_map = {
+      {"image/jpeg", ".jpeg"}, {"image/png", ".png"}, {"image/webp", ".webp"}, {"video/mp4", ".mp4"}};
+
   static std::string ExtractImageKey(const std::string& url) {
     static const std::regex pattern(R"(\/[0-9a-f]{32}\/(.+?)!)");
     if (std::smatch match; std::regex_search(url, match, pattern) && match.size() > 1) {
