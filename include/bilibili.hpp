@@ -49,6 +49,11 @@ class Bilibili {
 
       if (const auto view_json = nlohmann::json::parse(view_resp); view_json["data"].contains("pages")) {
         for (const auto& page : view_json["data"]["pages"]) {
+          if (page.value("duration", 0) > 600) {
+            LOG_WARNING("duration > 600s, skip");
+            continue;
+          }
+
           const auto cid = page["cid"].get<uint64_t>();
           const auto play_resp =
               cpr::Get(
