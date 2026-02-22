@@ -14,14 +14,16 @@ clean:
 	rm -rf $(BUILD_DIR) && rm -rf third_party/*build
 .PHONY: clean
 
-bot:
+prepare:
 	cmake -S . -B $(BUILD_DIR) -G Ninja
+.PHONY: prepare
+
+bot:
 	cmake --build $(BUILD_DIR) --target ciel_parser_bot --parallel $(NUM_JOB)
 	CIELPARSER_CONFIG_PATH=$(PROJECT_SOURCE_DIR)/config.json $(BUILD_DIR)/ciel_parser_bot
 .PHONY: bot
 
 test:
-	cmake -S . -B $(BUILD_DIR) -G Ninja
 	cmake --build $(BUILD_DIR) --target ciel_parser_test --parallel $(NUM_JOB)
 	$(BUILD_DIR)/ciel_parser_test
 .PHONY: test
