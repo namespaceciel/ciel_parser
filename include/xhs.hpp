@@ -101,7 +101,6 @@ class XHS {
           if (item.contains("stream")) {
             if (std::string live_video_url = extract_video(item["stream"]); !live_video_url.empty()) {
               res.emplace_back(std::move(live_video_url));
-              continue;
             }
           }
 
