@@ -6,3 +6,4 @@ CMakeUserPresets.json
 downloads/
 .idea/
 .DS_Store
+output.log
