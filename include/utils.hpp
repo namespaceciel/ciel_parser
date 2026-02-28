@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cpr/cpr.h>
+
 #include <chrono>
 #include <exception>
+#include <optional>
 #include <random>
 #include <thread>
 
@@ -25,6 +28,16 @@ void TryNTimes(auto&& f) {
 inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view message, const std::regex& pattern) {
   using Iterator = std::regex_token_iterator<std::string_view::const_iterator>;
   return {Iterator{message.begin(), message.end(), pattern}, Iterator{}};
+}
+
+inline std::optional<cpr::Response> HttpGet(std::string_view url, const cpr::Header& headers = {},
+                                            const cpr::Parameters& params = {}) {
+  cpr::Response r = cpr::Get(cpr::Url{std::string{url}}, params, headers);
+  if (r.status_code != 200) {
+    LOG_ERROR("HTTP GET {} failed, status_code = {}", url, r.status_code);
+    return std::nullopt;
+  }
+  return r;
 }
 
 inline std::filesystem::path SaveContents(const std::filesystem::path& download_dir, std::string_view ext,

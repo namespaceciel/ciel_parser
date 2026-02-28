@@ -27,17 +27,15 @@ class Twitter {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
-
-    const std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
-    const auto r = cpr::Get(cpr::Url{std::format("https://api.vxtwitter.com/Twitter/status/{}", id)});
-    if (r.status_code != 200) {
-      LOG_ERROR("cpr {} failed, status_code = {}", url, r.status_code);
-      return res;
+  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+    std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
+    auto r = HttpGet(std::format("https://api.vxtwitter.com/Twitter/status/{}", id));
+    if (!r) {
+      return {};
     }
 
-    if (auto json = nlohmann::json::parse(r.text, nullptr, false); json.contains("media_extended")) {
+    std::vector<std::string> res;
+    if (auto json = nlohmann::json::parse(r->text, nullptr, false); json.contains("media_extended")) {
       for (const auto& media : json["media_extended"]) {
         res.emplace_back(media.value("url", ""));
       }
@@ -45,9 +43,9 @@ class Twitter {
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    const auto url_prefix = download_link.substr(0, download_link.find('?'));
+    auto url_prefix = download_link.substr(0, download_link.find('?'));
     auto ext = std::filesystem::path(url_prefix).extension().string();
     if (ext.empty()) {
       ext = ".mp4";
@@ -60,12 +58,11 @@ class Twitter {
       LOG_INFO("download_link changes from {} to {}", download_link, final_download_link);
     }
 
-    const auto r = cpr::Get(cpr::Url{final_download_link});
-    if (r.status_code != 200) {
-      LOG_ERROR("Accessing {} failed", final_download_link);
+    auto r = HttpGet(final_download_link);
+    if (!r) {
       return std::nullopt;
     }
-    return SaveContents(download_dir, ext, download_link, r.text);
+    return SaveContents(download_dir, ext, download_link, r->text);
   }
 };
 

@@ -28,32 +28,26 @@ class XHS {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
-
-    const auto r =
-        cpr::Get(cpr::Url{url},
-                 cpr::Header{{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
-                             {"Referer", "https://www.xiaohongshu.com/"}});
-
-    if (r.status_code != 200) {
-      LOG_ERROR("cpr {} failed, status_code = {}", url, r.status_code);
-      return res;
+  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+    auto r = HttpGet(url, {{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
+                           {"Referer", "https://www.xiaohongshu.com/"}});
+    if (!r) {
+      return {};
     }
 
-    size_t start = r.text.find("window.__INITIAL_STATE__=");
+    size_t start = r->text.find("window.__INITIAL_STATE__=");
     if (start == std::string::npos) {
       LOG_ERROR(R"(Could not find "window.__INITIAL_STATE__=" in url {})", url);
-      return res;
+      return {};
     }
 
-    start = r.text.find('{', start);
+    start = r->text.find('{', start);
     int balance = 0;
     size_t end = start;
-    for (; end < r.text.size(); ++end) {
-      if (r.text[end] == '{') {
+    for (; end < r->text.size(); ++end) {
+      if (r->text[end] == '{') {
         balance++;
-      } else if (r.text[end] == '}') {
+      } else if (r->text[end] == '}') {
         balance--;
       }
       if (balance == 0 && end > start) {
@@ -62,22 +56,22 @@ class XHS {
     }
 
     try {
-      nlohmann::json data = nlohmann::json::parse(SanitizeJson(r.text.substr(start, end - start + 1)));
+      auto data = nlohmann::json::parse(SanitizeJson(r->text.substr(start, end - start + 1)));
 
       if (!data.contains("note") || !data["note"].contains("firstNoteId")) {
         LOG_ERROR(R"(Could not find data["note"]["firstNoteId"] in url)");
-        return res;
+        return {};
       }
-      const std::string nid = data["note"]["firstNoteId"];
+      std::string nid = data["note"]["firstNoteId"];
 
       if (!data["note"]["noteDetailMap"].contains(nid)) {
         LOG_ERROR(R"(Could not find data["note"]["noteDetailMap"][{}])", nid);
-        return res;
+        return {};
       }
 
       const auto& note_data = data["note"]["noteDetailMap"][nid]["note"];
 
-      const auto extract_video = [](const nlohmann::json& stream) -> std::string {
+      auto extract_video = [](const nlohmann::json& stream) -> std::string {
         if (!stream.is_object()) {
           return "";
         }
@@ -92,12 +86,12 @@ class XHS {
       if (note_data.value("type", "") == "video" && note_data.contains("video")) {
         if (note_data["video"].contains("media") && note_data["video"]["media"].contains("stream")) {
           if (std::string video_url = extract_video(note_data["video"]["media"]["stream"]); !video_url.empty()) {
-            res.emplace_back(std::move(video_url));
-            return res;
+            return {std::move(video_url)};
           }
         }
       }
 
+      std::vector<std::string> res;
       if (note_data.contains("imageList") && note_data["imageList"].is_array()) {
         for (const auto& item : note_data["imageList"]) {
           if (item.contains("stream")) {
@@ -116,39 +110,40 @@ class XHS {
             continue;
           }
 
-          if (const std::string key = ExtractImageKey(raw_url); !key.empty()) {
+          if (std::string key = ExtractImageKey(raw_url); !key.empty()) {
             res.emplace_back(std::format("https://ci.xiaohongshu.com/{}", key));
           }
         }
       }
+      return res;
     } catch (std::exception& e) {
       LOG_ERROR(R"(e.what(): {})", e.what());
     }
-    return res;
+    return {};
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    auto r = cpr::Get(cpr::Url{download_link});
-    if (r.status_code != 200) {
-      LOG_ERROR("Accessing {} failed", download_link);
+    auto r = HttpGet(download_link);
+    if (!r) {
       return std::nullopt;
     }
-    if (r.header["Content-Type"].contains("image/")) {
-      if (auto r_png = cpr::Get(cpr::Url{std::string{download_link} += "?imageView2/format/png"});
-          r_png.status_code == 200) {
+
+    if (r->header["Content-Type"].contains("image/")) {
+      if (auto r_png = HttpGet(std::string{download_link} += "?imageView2/format/png")) {
         r = std::move(r_png);
       }
     }
 
     std::string ext = ".bin";
     for (const auto& [type, suffix] : mime_map) {
-      if (r.header["Content-Type"].find(type) != std::string::npos) {
+      if (r->header["Content-Type"].find(type) != std::string::npos) {
         ext = suffix;
         break;
       }
     }
-    return SaveContents(download_dir, ext, download_link, r.text);
+
+    return SaveContents(download_dir, ext, download_link, r->text);
   }
 
  private:

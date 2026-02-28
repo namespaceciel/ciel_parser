@@ -27,41 +27,36 @@ class Pixiv {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
-
-    const std::regex re(R"(artworks/(\d+))");
+  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+    std::regex re(R"(artworks/(\d+))");
     std::cmatch m;
     if (!std::regex_search(url.begin(), url.end(), m, re)) {
       LOG_ERROR("regex_search failed, url: {} ", url);
-      return res;
+      return {};
     }
 
-    const auto r = cpr::Get(cpr::Url{std::format("https://www.pixiv.net/ajax/illust/{}/pages", m[1].str())},
-                            cpr::Header{{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
-
-    if (r.status_code != 200) {
-      LOG_ERROR("cpr {} failed, status_code = {}", url, r.status_code);
-      return res;
+    auto r = HttpGet(std::format("https://www.pixiv.net/ajax/illust/{}/pages", m[1].str()),
+                     {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
+    if (!r) {
+      return {};
     }
 
-    for (const auto& item : nlohmann::json::parse(r.text)["body"]) {
+    std::vector<std::string> res;
+    for (const auto& item : nlohmann::json::parse(r->text)["body"]) {
       res.emplace_back(item["urls"]["original"].get<std::string>());
     }
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    const auto r = cpr::Get(cpr::Url{download_link},
-                            cpr::Header{{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
-    if (r.status_code != 200) {
-      LOG_ERROR("Accessing {} failed", download_link);
+    auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
+    if (!r) {
       return std::nullopt;
     }
 
-    const auto ext = std::filesystem::path(download_link).extension().string();
-    return SaveContents(download_dir, ext, download_link, r.text);
+    auto ext = std::filesystem::path(download_link).extension().string();
+    return SaveContents(download_dir, ext, download_link, r->text);
   }
 };
 
