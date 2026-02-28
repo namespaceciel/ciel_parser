@@ -51,23 +51,33 @@ class Bilibili {
       }
 
       std::vector<std::string> res;
-      if (auto view_json = nlohmann::json::parse(view_resp->text); view_json["data"].contains("pages")) {
-        for (const auto& page : view_json["data"]["pages"]) {
-          if (page.value("duration", 0) > 600) {
-            LOG_WARNING("duration > 600s, skip");
-            continue;
-          }
+      auto view_json = nlohmann::json::parse(view_resp->text);
+      if (!view_json.contains("data") || !view_json["data"].contains("pages")) {
+        return {};
+      }
 
-          auto cid = page["cid"].get<uint64_t>();
-          auto play_resp =
-              HttpGet(std::format("https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=120", bvid, cid),
-                      {{"Referer", "https://www.bilibili.com"}, {"User-Agent", "Mozilla/5.0"}});
-          if (play_resp && nlohmann::json::parse(play_resp->text)["data"].contains("durl")) {
-            for (const auto& item : nlohmann::json::parse(play_resp->text)["data"]["durl"]) {
-              if (item.contains("url")) {
-                res.emplace_back(item["url"].get<std::string>());
-              }
-            }
+      for (const auto& page : view_json["data"]["pages"]) {
+        if (page.value("duration", 0) > 600) {
+          LOG_WARNING("duration > 600s, skip");
+          continue;
+        }
+
+        auto cid = page["cid"].get<uint64_t>();
+        auto play_resp =
+            HttpGet(std::format("https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=120", bvid, cid),
+                    {{"Referer", "https://www.bilibili.com"}, {"User-Agent", "Mozilla/5.0"}});
+        if (!play_resp) {
+          continue;
+        }
+
+        auto play_json = nlohmann::json::parse(play_resp->text);
+        if (!play_json.contains("data") || !play_json["data"].contains("durl")) {
+          continue;
+        }
+
+        for (const auto& item : play_json["data"]["durl"]) {
+          if (item.contains("url")) {
+            res.emplace_back(item["url"].get<std::string>());
           }
         }
       }
