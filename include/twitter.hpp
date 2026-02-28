@@ -21,6 +21,8 @@ class Twitter {
   inline static const std::regex url_pattern{R"((?:https?://)?(?:www\.)?(?:twitter|x)\.com/[^/]+/status/\d+)"};
 
  public:
+  inline static constexpr std::string_view NAME = "Twitter";
+
   static std::vector<std::string> GetUrls(const std::string_view message) {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }

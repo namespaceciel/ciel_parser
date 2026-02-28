@@ -22,6 +22,8 @@ class Bilibili {
       R"((?:https?://)?(?:(?:(?:www\.|m\.|t\.)?bilibili\.com/(?:video|opus)/)|(?:b23\.tv|bili2233\.cn)/)[^ \s\u3000]+)"};
 
  public:
+  inline static constexpr std::string_view NAME = "Bilibili";
+
   static std::vector<std::string> GetUrls(const std::string_view message) {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }

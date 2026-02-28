@@ -26,31 +26,16 @@ class Bot final : public tgbotxx::Bot {
         message->chat->type == tgbotxx::Chat::Type::Private ? message->from->username : message->chat->username;
     LOG_INFO("Received message {} from @{}", message_content, user_name);
 
-    OnCustomPlatformMessage<cielparser::XHS>(message, message_content);
-    OnCustomPlatformMessage<cielparser::WeiBo>(message, message_content);
-    OnCustomPlatformMessage<cielparser::Twitter>(message, message_content);
-    OnCustomPlatformMessage<cielparser::Pixiv>(message, message_content);
-    OnCustomPlatformMessage<cielparser::Bilibili>(message, message_content);
+    processMessage<cielparser::XHS>(message, message_content);
+    processMessage<cielparser::WeiBo>(message, message_content);
+    processMessage<cielparser::Twitter>(message, message_content);
+    processMessage<cielparser::Pixiv>(message, message_content);
+    processMessage<cielparser::Bilibili>(message, message_content);
   }
 
   template <class Platform>
-  void OnCustomPlatformMessage(const tgbotxx::Ptr<tgbotxx::Message>& message,
-                               const std::string_view message_content) const {
-    constexpr std::string_view platform_name = [] {
-      if constexpr (std::is_same_v<Platform, cielparser::XHS>) {
-        return "XHS";
-      } else if constexpr (std::is_same_v<Platform, cielparser::WeiBo>) {
-        return "WeiBo";
-      } else if constexpr (std::is_same_v<Platform, cielparser::Twitter>) {
-        return "Twitter";
-      } else if constexpr (std::is_same_v<Platform, cielparser::Pixiv>) {
-        return "Pixiv";
-      } else if constexpr (std::is_same_v<Platform, cielparser::Bilibili>) {
-        return "Bilibili";
-      } else {
-        static_assert(false);
-      }
-    }();
+  void processMessage(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string_view message_content) const {
+    constexpr auto platform_name = Platform::NAME;
 
     for (auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
       std::thread{[this, url = std::move(url), message, platform_name] {

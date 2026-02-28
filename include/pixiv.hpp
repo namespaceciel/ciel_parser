@@ -21,6 +21,8 @@ class Pixiv {
   inline static const std::regex url_pattern{R"(https?://(?:www\.)?pixiv\.net/artworks/\d+)"};
 
  public:
+  inline static constexpr std::string_view NAME = "Pixiv";
+
   static std::vector<std::string> GetUrls(const std::string_view message) {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }

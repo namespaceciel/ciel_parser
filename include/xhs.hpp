@@ -22,6 +22,8 @@ class XHS {
   inline static const std::regex url_pattern{R"(https?://(?:www\.)?(?:xiaohongshu|xhslink)\.com/[\w\-./?=&%]+)"};
 
  public:
+  inline static constexpr std::string_view NAME = "XHS";
+
   static std::vector<std::string> GetUrls(const std::string_view message) {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }

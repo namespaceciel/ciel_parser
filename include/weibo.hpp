@@ -21,6 +21,8 @@ class WeiBo {
   inline static const std::regex url_pattern{R"((https?://(?:m\.)?weibo\.(?:com|cn)/(?!u/)[^\s]+))"};
 
  public:
+  inline static constexpr std::string_view NAME = "WeiBo";
+
   static std::vector<std::string> GetUrls(const std::string_view message) {
     return cielparser::GetMatchedUrlsFromPattern(message, url_pattern);
   }
