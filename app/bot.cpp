@@ -2,6 +2,7 @@
 #include <string>
 #include <tgbotxx/tgbotxx.hpp>
 #include <thread>
+#include <tuple>
 
 #include "bilibili.hpp"
 #include "config.hpp"
@@ -20,17 +21,17 @@ class Bot final : public tgbotxx::Bot {
   ~Bot() override = default;
 
  private:
+  inline static const auto kPlatforms =
+      std::tuple<cielparser::XHS, cielparser::WeiBo, cielparser::Twitter, cielparser::Pixiv, cielparser::Bilibili>{};
+
   void onAnyMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) override {
     const std::string_view message_content = !message->text.empty() ? message->text : message->caption;
     const std::string_view user_name =
         message->chat->type == tgbotxx::Chat::Type::Private ? message->from->username : message->chat->username;
     LOG_INFO("Received message {} from @{}", message_content, user_name);
 
-    processMessage<cielparser::XHS>(message, message_content);
-    processMessage<cielparser::WeiBo>(message, message_content);
-    processMessage<cielparser::Twitter>(message, message_content);
-    processMessage<cielparser::Pixiv>(message, message_content);
-    processMessage<cielparser::Bilibili>(message, message_content);
+    std::apply([&]<class... Platform>(Platform...) { (processMessage<Platform>(message, message_content), ...); },
+               kPlatforms);
   }
 
   template <class Platform>
