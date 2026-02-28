@@ -11,7 +11,7 @@ else
 endif
 
 clean:
-	rm -rf $(BUILD_DIR) && rm -rf third_party/*build
+	rm -rf $(BUILD_DIR)
 .PHONY: clean
 
 prepare:
