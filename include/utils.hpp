@@ -1,6 +1,8 @@
 #pragma once
 
+#include <chrono>
 #include <exception>
+#include <random>
 #include <thread>
 
 #include "quill.hpp"
@@ -21,26 +23,20 @@ void TryNTimes(auto&& f) {
 }
 
 inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view message, const std::regex& pattern) {
-  using sv_token_iterator = std::regex_token_iterator<std::string_view::const_iterator>;
-  const std::vector<std::string> urls(sv_token_iterator(message.begin(), message.end(), pattern), sv_token_iterator());
-  return urls;
+  using Iterator = std::regex_token_iterator<std::string_view::const_iterator>;
+  return {Iterator{message.begin(), message.end(), pattern}, Iterator{}};
 }
 
-inline std::atomic<size_t> g_counter{0};
+inline std::filesystem::path SaveContents(const std::filesystem::path& download_dir, std::string_view ext,
+                                          std::string_view download_link, std::string_view file_contents) {
+  static std::atomic<uint64_t> counter{0};
+  const auto now = std::chrono::steady_clock::now().time_since_epoch().count();
+  const uint64_t unique_id = now + counter.fetch_add(1, std::memory_order_relaxed);
 
-inline size_t GenerateUniqueId() { return g_counter.fetch_add(1, std::memory_order_relaxed); }
-
-inline std::filesystem::path SaveContents(const std::filesystem::path& download_dir, const std::string_view ext,
-                                          const std::string_view download_link, const std::string_view file_contents) {
-  while (true) {
-    auto filepath = download_dir / std::format("{}{}", cielparser::GenerateUniqueId(), ext);
-    if (std::filesystem::exists(filepath)) {
-      continue;
-    }
-    std::ofstream(filepath, std::ios::binary) << file_contents;
-    LOG_INFO("Downloaded {} in {}", download_link, filepath.string());
-    return filepath;
-  }
+  auto filepath = download_dir / std::format("{}{}", unique_id, ext);
+  std::ofstream(filepath, std::ios::binary) << file_contents;
+  LOG_INFO("Downloaded {} in {}", download_link, filepath.string());
+  return filepath;
 }
 
 }  // namespace cielparser
