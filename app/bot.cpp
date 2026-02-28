@@ -25,8 +25,12 @@ class Bot final : public tgbotxx::Bot {
       std::tuple<cielparser::XHS, cielparser::WeiBo, cielparser::Twitter, cielparser::Pixiv, cielparser::Bilibili>{};
 
   void onAnyMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) override {
-    const std::string_view message_content = !message->text.empty() ? message->text : message->caption;
-    const std::string_view user_name =
+    const auto message_content = !message->text.empty() ? message->text : message->caption;
+    if (message_content.empty()) {
+      return;
+    }
+
+    const auto& user_name =
         message->chat->type == tgbotxx::Chat::Type::Private ? message->from->username : message->chat->username;
     LOG_INFO("Received message {} from @{}", message_content, user_name);
 
@@ -37,8 +41,12 @@ class Bot final : public tgbotxx::Bot {
   template <class Platform>
   void processMessage(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string_view message_content) const {
     constexpr auto platform_name = Platform::NAME;
+    const auto urls = Platform::GetUrls(message_content);
+    if (urls.empty()) {
+      return;
+    }
 
-    for (auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
+    for (auto&& url : urls) {
       std::thread{[this, url = std::move(url), message, platform_name] {
         auto download_links = Platform::GetDownloadLinks(url);
         LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
