@@ -4,8 +4,9 @@
 
 #include <chrono>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <optional>
-#include <random>
 #include <thread>
 
 #include "quill.hpp"
@@ -47,7 +48,12 @@ inline std::filesystem::path SaveContents(const std::filesystem::path& download_
   const uint64_t unique_id = now + counter.fetch_add(1, std::memory_order_relaxed);
 
   auto filepath = download_dir / std::format("{}{}", unique_id, ext);
-  std::ofstream(filepath, std::ios::binary) << file_contents;
+  std::ofstream ofs(filepath, std::ios::binary);
+  if (!ofs) {
+    LOG_ERROR("Failed to create file {}", filepath.string());
+    return {};
+  }
+  ofs << file_contents;
   LOG_INFO("Downloaded {} in {}", download_link, filepath.string());
   return filepath;
 }
