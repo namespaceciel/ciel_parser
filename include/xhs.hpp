@@ -150,8 +150,11 @@ class XHS {
   }
 
  private:
-  inline static const std::map<std::string, std::string> mime_map = {
-      {"image/jpeg", ".jpeg"}, {"image/png", ".png"}, {"image/webp", ".webp"}, {"video/mp4", ".mp4"}};
+  inline static const std::map<std::string, std::string> mime_map = {{"image/jpeg", ".jpeg"},
+                                                                     {"image/png", ".png"},
+                                                                     {"image/webp", ".webp"},
+                                                                     {"video/mp4", ".mp4"},
+                                                                     {"binary/octet-stream", ".mp4"}};
 
   static std::string ExtractImageKey(const std::string& url) {
     static const std::regex pattern(R"(\/[0-9a-f]{32}\/(.+?)!)");
