@@ -73,12 +73,25 @@ int main() {
     LOG_ERROR("CIELPARSER_CONFIG_PATH env not set");
     return 1;
   }
+
   if (!std::filesystem::exists(config_path)) {
     LOG_ERROR("Config file {} not found", config_path);
     return 1;
   }
 
-  cielparser::Config config = nlohmann::json::parse(std::ifstream{config_path});
+  cielparser::Config config;
+  try {
+    config = nlohmann::json::parse(std::ifstream{config_path});
+  } catch (const std::exception& e) {
+    LOG_ERROR("Failed to parse config: {}", e.what());
+    return 1;
+  }
+
+  if (config.bot_token.empty()) {
+    LOG_ERROR("bot_token is empty in config");
+    return 1;
+  }
+
   std::filesystem::create_directories(config.download_dir);
   Bot bot(std::move(config));
   LOG_INFO("Starting bot...");
