@@ -50,8 +50,9 @@ class Twitter {
 
     std::string final_download_link{download_link};
     if (download_link.contains("pbs.twimg.com") && (ext == ".jpg" || ext == ".png")) {
-      final_download_link = std::format("{}?format={}&name=orig",
-                                        url_prefix.substr(0, url_prefix.length() - ext.length()), ext.substr(1));
+      final_download_link =
+          std::format("{}?format=png&name=4096x4096", url_prefix.substr(0, url_prefix.length() - ext.length()));
+      ext = ".png";
       LOG_INFO("download_link changes from {} to {}", download_link, final_download_link);
     }
 
