@@ -70,28 +70,17 @@ class Bot final : public tgbotxx::Bot {
 int main() {
   const char* config_path = std::getenv("CIELPARSER_CONFIG_PATH");
   if (!config_path) {
-    LOG_ERROR("CIELPARSER_CONFIG_PATH env not set");
-    return 1;
+    throw std::runtime_error("CIELPARSER_CONFIG_PATH env not set");
   }
-
   if (!std::filesystem::exists(config_path)) {
-    LOG_ERROR("Config file {} not found", config_path);
-    return 1;
+    throw std::runtime_error(std::format("Config file {} not found", config_path));
   }
-
-  cielparser::Config config;
-  try {
-    config = nlohmann::json::parse(std::ifstream{config_path});
-  } catch (const std::exception& e) {
-    LOG_ERROR("Failed to parse config: {}", e.what());
-    return 1;
-  }
-
+  cielparser::Config config = nlohmann::json::parse(std::ifstream{config_path});
   if (config.bot_token.empty()) {
-    LOG_ERROR("bot_token is empty in config");
-    return 1;
+    throw std::runtime_error("bot_token is empty in config");
   }
 
+  cielparser::SetupQuill(config.log_path);
   std::filesystem::create_directories(config.download_dir);
   Bot bot(std::move(config));
   LOG_INFO("Starting bot...");
