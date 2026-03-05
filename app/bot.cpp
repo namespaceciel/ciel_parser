@@ -6,6 +6,7 @@
 
 #include "bilibili.hpp"
 #include "config.hpp"
+#include "douyin.hpp"
 #include "pixiv.hpp"
 #include "quill.hpp"
 #include "twitter.hpp"
@@ -21,8 +22,8 @@ class Bot final : public tgbotxx::Bot {
   ~Bot() override = default;
 
  private:
-  static constexpr auto kPlatforms =
-      std::tuple<cielparser::XHS, cielparser::WeiBo, cielparser::Twitter, cielparser::Pixiv, cielparser::Bilibili>{};
+  static constexpr auto kPlatforms = std::tuple<cielparser::XHS, cielparser::WeiBo, cielparser::Twitter,
+                                                cielparser::Pixiv, cielparser::Bilibili, cielparser::DouYin>{};
 
   void onAnyMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) override {
     const auto message_content = !message->text.empty() ? message->text : message->caption;
