@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <format>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <regex>
@@ -24,7 +23,7 @@ class WeiBo {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
     std::string id(url.substr(url.find_last_of('/') + 1));
     if (const size_t q_pos = id.find('?'); q_pos != std::string::npos) {
       id.resize(q_pos);
@@ -74,14 +73,14 @@ class WeiBo {
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    auto r = HttpGet(download_link);
+    const auto r = HttpGet(download_link);
     if (!r) {
       return std::nullopt;
     }
 
-    auto url_str = download_link.substr(0, download_link.find('?'));
+    const auto url_str = download_link.substr(0, download_link.find('?'));
     auto ext = std::filesystem::path(url_str).extension().string();
     if (ext.empty()) {
       ext = ".bin";

@@ -21,7 +21,7 @@ class Bot final : public tgbotxx::Bot {
   ~Bot() override = default;
 
  private:
-  inline static const auto kPlatforms =
+  static constexpr auto kPlatforms =
       std::tuple<cielparser::XHS, cielparser::WeiBo, cielparser::Twitter, cielparser::Pixiv, cielparser::Bilibili>{};
 
   void onAnyMessage(const tgbotxx::Ptr<tgbotxx::Message>& message) override {

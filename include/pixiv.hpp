@@ -24,8 +24,8 @@ class Pixiv {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
-    std::regex re(R"(artworks/(\d+))");
+  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
+    const std::regex re(R"(artworks/(\d+))");
     std::cmatch m;
     if (!std::regex_search(url.begin(), url.end(), m, re)) {
       LOG_ERROR("regex_search failed, url: {} ", url);
@@ -45,14 +45,14 @@ class Pixiv {
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
+    const auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
     if (!r) {
       return std::nullopt;
     }
 
-    auto ext = std::filesystem::path(download_link).extension().string();
+    const auto ext = std::filesystem::path(download_link).extension().string();
     return SaveContents(download_dir, ext, download_link, r->text);
   }
 };

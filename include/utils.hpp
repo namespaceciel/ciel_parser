@@ -35,9 +35,9 @@ inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view
   return {Iterator{message.begin(), message.end(), pattern}, Iterator{}};
 }
 
-inline std::optional<cpr::Response> HttpGet(std::string_view url, const cpr::Header& headers = {},
+inline std::optional<cpr::Response> HttpGet(const std::string_view url, const cpr::Header& headers = {},
                                             const cpr::Parameters& params = {}) {
-  cpr::Response r = cpr::Get(cpr::Url{std::string{url}}, params, headers);
+  cpr::Response r = cpr::Get(cpr::Url{url}, params, headers);
   if (r.status_code != 200) {
     LOG_ERROR("HTTP GET {} failed, status_code = {}", url, r.status_code);
     return std::nullopt;

@@ -25,7 +25,7 @@ class XHS {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
     auto r = HttpGet(url, {{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
                            {"Referer", "https://www.xiaohongshu.com/"}});
     if (!r) {
@@ -119,7 +119,7 @@ class XHS {
     return {};
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
     auto r = HttpGet(download_link);
     if (!r) {

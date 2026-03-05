@@ -27,10 +27,10 @@ class Bilibili {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
     try {
       cpr::Session session;
-      session.SetUrl(cpr::Url{std::string{url}});
+      session.SetUrl(cpr::Url{url});
       session.SetHeader(cpr::Header{{"User-Agent",
                                      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                                      "Chrome/120.0.0.0 Safari/537.36"}});
@@ -87,14 +87,14 @@ class Bilibili {
     return {};
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.bilibili.com"}});
+    const auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.bilibili.com"}});
     if (!r) {
       return std::nullopt;
     }
 
-    auto ext = download_link.substr(download_link.rfind('.'), download_link.find('?') - download_link.rfind('.'));
+    const auto ext = download_link.substr(download_link.rfind('.'), download_link.find('?') - download_link.rfind('.'));
     return SaveContents(download_dir, ext, download_link, r->text);
   }
 };

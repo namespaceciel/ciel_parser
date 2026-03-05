@@ -24,7 +24,7 @@ class Twitter {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(std::string_view url) {
+  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
     std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
     auto r = HttpGet(std::format("https://api.vxtwitter.com/Twitter/status/{}", id));
     if (!r) {
@@ -40,9 +40,9 @@ class Twitter {
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(std::string_view download_link,
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
                                                            const std::filesystem::path& download_dir) {
-    auto url_prefix = download_link.substr(0, download_link.find('?'));
+    const auto url_prefix = download_link.substr(0, download_link.find('?'));
     auto ext = std::filesystem::path(url_prefix).extension().string();
     if (ext.empty()) {
       ext = ".mp4";
@@ -56,7 +56,7 @@ class Twitter {
       LOG_INFO("download_link changes from {} to {}", download_link, final_download_link);
     }
 
-    auto r = HttpGet(final_download_link);
+    const auto r = HttpGet(final_download_link);
     if (!r) {
       return std::nullopt;
     }
