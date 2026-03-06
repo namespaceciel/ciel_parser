@@ -61,6 +61,11 @@ class XHS {
       }
       std::string nid = data["note"]["firstNoteId"];
 
+      if (nid.empty()) {
+        LOG_ERROR("Note ID is empty, note may not exist or requires login");
+        return {};
+      }
+
       if (!data["note"]["noteDetailMap"].contains(nid)) {
         LOG_ERROR(R"(Could not find data["note"]["noteDetailMap"][{}])", nid);
         return {};
