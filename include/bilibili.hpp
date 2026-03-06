@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <format>
 #include <nlohmann/json.hpp>
-#include <optional>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -56,11 +55,6 @@ class Bilibili {
       }
 
       for (const auto& page : view_json["data"]["pages"]) {
-        if (page.value("duration", 0) > 600) {
-          LOG_WARNING("duration > 600s, skip");
-          continue;
-        }
-
         auto cid = page["cid"].get<uint64_t>();
         auto play_resp =
             HttpGet(std::format("https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=120", bvid, cid),
@@ -87,15 +81,21 @@ class Bilibili {
     return {};
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static tl::expected<std::filesystem::path, std::string> DownloadFile(const std::string_view download_link,
+                                                                       const std::filesystem::path& download_dir) {
     const auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.bilibili.com"}});
     if (!r) {
-      return std::nullopt;
+      return std::move(r.error());
     }
 
     const auto ext = download_link.substr(download_link.rfind('.'), download_link.find('?') - download_link.rfind('.'));
-    return SaveContents(download_dir, ext, download_link, r->text);
+
+    const auto download_filepath = SaveContents(download_dir, ext, download_link, r->text);
+    if (std::filesystem::file_size(download_filepath) > 50 * 1024 * 1024) {
+      return LogAndReturnError("File size {} MB exceeds Telegram's 50MB limit, download from: {}",
+                               r->text.size() / (1024 * 1024), download_link);
+    }
+    return download_filepath;
   }
 };
 

@@ -6,8 +6,8 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
-#include <optional>
 #include <thread>
+#include <tl/expected.hpp>
 
 #include "quill.hpp"
 
@@ -35,12 +35,18 @@ inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view
   return {Iterator{message.begin(), message.end(), pattern}, Iterator{}};
 }
 
-inline std::optional<cpr::Response> HttpGet(const std::string_view url, const cpr::Header& headers = {},
-                                            const cpr::Parameters& params = {}) {
+template <class... Args>
+auto LogAndReturnError(std::format_string<Args...> fmt, Args&&... args) {
+  auto err_msg = std::format(fmt, std::forward<Args>(args)...);
+  LOG_ERROR("{}", err_msg);
+  return tl::unexpected(std::move(err_msg));
+}
+
+inline tl::expected<cpr::Response, std::string> HttpGet(const std::string_view url, const cpr::Header& headers = {},
+                                                        const cpr::Parameters& params = {}) {
   cpr::Response r = cpr::Get(cpr::Url{url}, params, headers);
   if (r.status_code != 200) {
-    LOG_ERROR("HTTP GET {} failed, status_code = {}", url, r.status_code);
-    return std::nullopt;
+    return LogAndReturnError("Download {} failed, status_code = {}", url, r.status_code);
   }
   return r;
 }

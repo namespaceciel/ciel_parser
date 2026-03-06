@@ -5,7 +5,6 @@
 #include <format>
 #include <memory>
 #include <nlohmann/json.hpp>
-#include <optional>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -66,11 +65,11 @@ class DouYin {
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static tl::expected<std::filesystem::path, std::string> DownloadFile(const std::string_view download_link,
+                                                                       const std::filesystem::path& download_dir) {
     auto r = HttpGet(download_link, {{"Referer", "https://www.douyin.com/"}});
     if (!r) {
-      return std::nullopt;
+      return std::move(r.error());
     }
 
     std::string ext = ".bin";
@@ -79,7 +78,13 @@ class DouYin {
     } else if (r->header["Content-Type"].contains("image")) {
       ext = ".jpeg";
     }
-    return SaveContents(download_dir, ext, download_link, r->text);
+
+    const auto download_filepath = SaveContents(download_dir, ext, download_link, r->text);
+    if (std::filesystem::file_size(download_filepath) > 50 * 1024 * 1024) {
+      return LogAndReturnError("File size {} MB exceeds Telegram's 50MB limit, download from: {}",
+                               r->text.size() / (1024 * 1024), download_link);
+    }
+    return download_filepath;
   }
 };
 

@@ -51,13 +51,22 @@ class Bot final : public tgbotxx::Bot {
       std::thread{[this, url = std::move(url), message, platform_name] {
         auto download_links = Platform::GetDownloadLinks(url);
         LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
+        if (download_links.empty()) {
+          api()->sendMessage(message->chat->id, std::format("Fail to get download_links from {}", url));
+          return;
+        }
+
         for (auto&& download_link : download_links) {
           std::thread{[this, download_link = std::move(download_link), message] {
             LOG_INFO("Try downloading {}", download_link);
-            if (const auto downloaded_filepath = Platform::DownloadFile(download_link, download_dir_)) {
-              LOG_INFO("Uploading file {}", downloaded_filepath->string());
-              cpr::File document(downloaded_filepath->string());
+            if (const auto download_res = Platform::DownloadFile(download_link, download_dir_);
+                download_res.has_value()) {
+              const std::string download_filepath = download_res->string();
+              LOG_INFO("Uploading file {}", download_filepath);
+              cpr::File document(download_filepath);
               cielparser::TryNTimes<3>([&] { api()->sendDocument(message->chat->id, document); });
+            } else {
+              api()->sendMessage(message->chat->id, download_res.error());
             }
           }}.detach();
         }

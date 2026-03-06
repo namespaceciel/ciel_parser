@@ -31,12 +31,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tgbotxx)
 
+FetchContent_Declare(
+        tl_expected
+        GIT_REPOSITORY https://github.com/TartanLlama/expected.git
+        GIT_TAG v1.3.1
+)
+FetchContent_MakeAvailable(tl_expected)
+
 add_library(ciel_parser INTERFACE)
 target_include_directories(ciel_parser INTERFACE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(ciel_parser INTERFACE
         nlohmann_json
         quill
         tgbotxx
+        tl::expected
 )
 
 add_executable(ciel_parser_bot app/bot.cpp)

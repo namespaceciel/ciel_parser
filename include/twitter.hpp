@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <format>
 #include <nlohmann/json.hpp>
-#include <optional>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -40,8 +39,8 @@ class Twitter {
     return res;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static tl::expected<std::filesystem::path, std::string> DownloadFile(const std::string_view download_link,
+                                                                       const std::filesystem::path& download_dir) {
     const auto url_prefix = download_link.substr(0, download_link.find('?'));
     auto ext = std::filesystem::path(url_prefix).extension().string();
     if (ext.empty()) {
@@ -58,9 +57,9 @@ class Twitter {
 
     const auto r = HttpGet(final_download_link);
     if (!r) {
-      return std::nullopt;
+      return std::move(r.error());
     }
-    return SaveContents(download_dir, ext, download_link, r->text);
+    return SaveContents(download_dir, ext, final_download_link, r->text);
   }
 };
 
