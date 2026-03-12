@@ -1,8 +1,10 @@
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <tgbotxx/tgbotxx.hpp>
 #include <thread>
 #include <tuple>
+#include <vector>
 
 #include "bilibili.hpp"
 #include "config.hpp"
@@ -42,33 +44,53 @@ class Bot final : public tgbotxx::Bot {
   template <class Platform>
   void processMessage(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string_view message_content) const {
     constexpr auto platform_name = Platform::NAME;
-    const auto urls = Platform::GetUrls(message_content);
-    if (urls.empty()) {
-      return;
-    }
+    const bool is_group = message->chat->type != tgbotxx::Chat::Type::Private;
 
-    for (auto&& url : urls) {
-      std::thread{[this, url = std::move(url), message, platform_name] {
-        auto download_links = Platform::GetDownloadLinks(url);
+    for (const auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
+      std::thread{[=, this, url = std::move(url)] {
+        const std::vector<std::string> download_links = Platform::GetDownloadLinks(url);
         LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
-        if (download_links.empty()) {
-          api()->sendMessage(message->chat->id, std::format("Fail to get download_links from {}", url));
+
+        std::vector<std::optional<std::filesystem::path>> downloaded_files(download_links.size());
+        {
+          std::vector<std::thread> threads;
+          threads.reserve(download_links.size());
+          for (size_t i = 0; i < download_links.size(); ++i) {
+            auto& link = download_links[i];
+            threads.emplace_back([=, this, &link, &downloaded_files] {
+              LOG_INFO("Try downloading {}", link);
+              if (auto download_res = Platform::DownloadFile(link, download_dir_); download_res.has_value()) {
+                downloaded_files[i] = *download_res;
+              }
+            });
+          }
+          for (auto& t : threads) {
+            t.join();
+          }
+        }
+        std::erase_if(downloaded_files, [](const auto& f) { return !f.has_value(); });
+
+        if (downloaded_files.empty()) {
+          api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
+                             false, nullptr, "", 0, nullptr, false, "", nullptr,
+                             cielparser::MakeReplyParameters(is_group, message->messageId));
           return;
         }
 
-        for (auto&& download_link : download_links) {
-          std::thread{[this, download_link = std::move(download_link), message] {
-            LOG_INFO("Try downloading {}", download_link);
-            if (const auto download_res = Platform::DownloadFile(download_link, download_dir_);
-                download_res.has_value()) {
-              const std::string download_filepath = download_res->string();
-              LOG_INFO("Uploading file {}", download_filepath);
-              cpr::File document(download_filepath);
-              cielparser::TryNTimes<3>([&] { api()->sendDocument(message->chat->id, document); });
-            } else {
-              api()->sendMessage(message->chat->id, download_res.error());
-            }
-          }}.detach();
+        constexpr size_t chunk_size = 10;
+        const size_t total_chunks = (downloaded_files.size() + 9) / 10;
+        for (size_t i = 0; i < downloaded_files.size(); i += chunk_size) {
+          std::vector<tgbotxx::Ptr<tgbotxx::InputMedia>> media_group;
+          for (size_t j = i; j < std::min(i + chunk_size, downloaded_files.size()); ++j) {
+            auto input_media = std::make_shared<tgbotxx::InputMediaDocument>();
+            input_media->media = cpr::File(downloaded_files[j]->string());
+            media_group.emplace_back(std::move(input_media));
+          }
+          media_group.back()->caption = std::format("[source]({}) \\[{}/{}\\]", url, i / chunk_size + 1, total_chunks);
+          media_group.back()->parseMode = "MarkdownV2";
+
+          api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "",
+                                cielparser::MakeReplyParameters(is_group, message->messageId));
         }
       }}.detach();
     }

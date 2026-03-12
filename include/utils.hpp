@@ -6,10 +6,13 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <thread>
 #include <tl/expected.hpp>
+#include <vector>
 
 #include "quill.hpp"
+#include "tgbotxx/tgbotxx.hpp"
 
 namespace cielparser {
 
@@ -63,6 +66,15 @@ inline std::filesystem::path SaveContents(const std::filesystem::path& download_
     LOG_INFO("Downloaded {} in {}", download_link, filepath.string());
     return filepath;
   }
+}
+
+inline tgbotxx::Ptr<tgbotxx::ReplyParameters> MakeReplyParameters(const bool is_group, const std::int32_t message_id) {
+  tgbotxx::Ptr<tgbotxx::ReplyParameters> reply_params;
+  if (is_group) {
+    reply_params = std::make_shared<tgbotxx::ReplyParameters>();
+    reply_params->messageId = message_id;
+  }
+  return reply_params;
 }
 
 }  // namespace cielparser
