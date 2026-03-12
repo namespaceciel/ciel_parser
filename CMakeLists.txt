@@ -27,7 +27,7 @@ FetchContent_MakeAvailable(quill)
 FetchContent_Declare(
         tgbotxx
         GIT_REPOSITORY https://github.com/baderouaich/tgbotxx.git
-        GIT_TAG v1.2.9.2
+        GIT_TAG v1.2.9.5_dev
 )
 FetchContent_MakeAvailable(tgbotxx)
 
