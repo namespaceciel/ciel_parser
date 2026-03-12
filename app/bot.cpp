@@ -97,7 +97,9 @@ class Bot final : public tgbotxx::Bot {
             input_media->media = cpr::File(downloaded_files[j]->string());
             media_group.emplace_back(std::move(input_media));
           }
-          media_group.back()->caption = std::format("[source]({}) \\[{}/{}\\]", url, i / chunk_size + 1, total_chunks);
+          media_group.back()->caption =
+              total_chunks > 1 ? std::format("[source]({}) \\[{}/{}\\]", url, i / chunk_size + 1, total_chunks)
+                               : std::format("[source]({})", url);
           media_group.back()->parseMode = "MarkdownV2";
 
           api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "",
