@@ -19,7 +19,11 @@
 class Bot final : public tgbotxx::Bot {
  public:
   explicit Bot(cielparser::Config config)
-      : tgbotxx::Bot(config.bot_token), download_dir_(std::move(config.download_dir)) {}
+      : tgbotxx::Bot(config.bot_token), download_dir_(std::move(config.download_dir)) {
+    if (!config.tg_api_endpoint.empty()) {
+      api()->setUrl(config.tg_api_endpoint);
+    }
+  }
 
   ~Bot() override = default;
 
