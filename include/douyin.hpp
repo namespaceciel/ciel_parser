@@ -79,12 +79,7 @@ class DouYin {
       ext = ".jpeg";
     }
 
-    const auto download_filepath = SaveContents(download_dir, ext, download_link, r->text);
-    if (std::filesystem::file_size(download_filepath) > 50 * 1024 * 1024) {
-      return LogAndReturnError("File size {} MB exceeds Telegram's 50MB limit, download from: {}",
-                               r->text.size() / (1024 * 1024), download_link);
-    }
-    return download_filepath;
+    return SaveContents(download_dir, ext, download_link, r->text);
   }
 };
 
