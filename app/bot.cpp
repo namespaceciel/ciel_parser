@@ -81,6 +81,13 @@ class Bot final : public tgbotxx::Bot {
           return;
         }
 
+        if (downloaded_files.size() == 1) {
+          api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0]->string()), 0, std::monostate{},
+                              std::format("[source]({})", url), "MarkdownV2", {}, false, false, nullptr, "", 0, false,
+                              false, "", nullptr, cielparser::MakeReplyParameters(is_group, message->messageId));
+          return;
+        }
+
         constexpr size_t chunk_size = 10;
         const size_t total_chunks = (downloaded_files.size() + 9) / 10;
         for (size_t i = 0; i < downloaded_files.size(); i += chunk_size) {
