@@ -75,16 +75,20 @@ class Bot final : public tgbotxx::Bot {
         std::erase_if(downloaded_files, [](const auto& f) { return !f.has_value(); });
 
         if (downloaded_files.empty()) {
-          api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
-                             false, nullptr, "", 0, nullptr, false, "", nullptr,
-                             cielparser::MakeReplyParameters(is_group, message->messageId));
+          cielparser::TryNTimes<3>([&] {
+            api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
+                               false, nullptr, "", 0, nullptr, false, "", nullptr,
+                               cielparser::MakeReplyParameters(is_group, message->messageId));
+          });
           return;
         }
 
         if (downloaded_files.size() == 1) {
-          api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0]->string()), 0, std::monostate{},
-                              std::format("[source]({})", url), "MarkdownV2", {}, false, false, nullptr, "", 0, false,
-                              false, "", nullptr, cielparser::MakeReplyParameters(is_group, message->messageId));
+          cielparser::TryNTimes<3>([&] {
+            api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0]->string()), 0, std::monostate{},
+                                std::format("[source]({})", url), "MarkdownV2", {}, false, false, nullptr, "", 0, false,
+                                false, "", nullptr, cielparser::MakeReplyParameters(is_group, message->messageId));
+          });
           return;
         }
 
@@ -102,8 +106,10 @@ class Bot final : public tgbotxx::Bot {
                                : std::format("[source]({})", url);
           media_group.back()->parseMode = "MarkdownV2";
 
-          api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "",
-                                cielparser::MakeReplyParameters(is_group, message->messageId));
+          cielparser::TryNTimes<3>([&] {
+            api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "",
+                                  cielparser::MakeReplyParameters(is_group, message->messageId));
+          });
         }
       }}.detach();
     }
