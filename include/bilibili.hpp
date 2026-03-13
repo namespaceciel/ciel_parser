@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <format>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -81,11 +82,11 @@ class Bilibili {
     return {};
   }
 
-  static tl::expected<std::filesystem::path, std::string> DownloadFile(const std::string_view download_link,
-                                                                       const std::filesystem::path& download_dir) {
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
+                                                           const std::filesystem::path& download_dir) {
     const auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.bilibili.com"}});
     if (!r) {
-      return std::move(r.error());
+      return std::nullopt;
     }
 
     const auto ext = download_link.substr(download_link.rfind('.'), download_link.find('?') - download_link.rfind('.'));

@@ -4,6 +4,7 @@
 #include <format>
 #include <map>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <regex>
 #include <string>
 #include <string_view>
@@ -123,11 +124,11 @@ class XHS {
     return {};
   }
 
-  static tl::expected<std::filesystem::path, std::string> DownloadFile(const std::string_view download_link,
-                                                                       const std::filesystem::path& download_dir) {
+  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
+                                                           const std::filesystem::path& download_dir) {
     auto r = HttpGet(download_link);
     if (!r) {
-      return std::move(r.error());
+      return std::nullopt;
     }
 
     if (r->header["Content-Type"].contains("image/")) {

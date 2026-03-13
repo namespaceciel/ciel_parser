@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <future>
 #include <optional>
 #include <string>
 #include <tgbotxx/tgbotxx.hpp>
@@ -55,24 +56,22 @@ class Bot final : public tgbotxx::Bot {
         const std::vector<std::string> download_links = Platform::GetDownloadLinks(url);
         LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
 
-        std::vector<std::optional<std::filesystem::path>> downloaded_files(download_links.size());
-        {
-          std::vector<std::thread> threads;
-          threads.reserve(download_links.size());
-          for (size_t i = 0; i < download_links.size(); ++i) {
-            auto& link = download_links[i];
-            threads.emplace_back([=, this, &link, &downloaded_files] {
-              LOG_INFO("Try downloading {}", link);
-              if (auto download_res = Platform::DownloadFile(link, download_dir_); download_res.has_value()) {
-                downloaded_files[i] = *download_res;
-              }
-            });
-          }
-          for (auto& t : threads) {
-            t.join();
+        std::vector<std::future<std::optional<std::filesystem::path>>> futures;
+        futures.reserve(download_links.size());
+        for (const auto& link : download_links) {
+          futures.emplace_back(std::async(std::launch::async, [this, link] {
+            LOG_INFO("Try downloading {}", link);
+            return Platform::DownloadFile(link, download_dir_);
+          }));
+        }
+
+        std::vector<std::filesystem::path> downloaded_files;
+        downloaded_files.reserve(download_links.size());
+        for (auto& future : futures) {
+          if (auto res = future.get(); res.has_value()) {
+            downloaded_files.emplace_back(std::move(*res));
           }
         }
-        std::erase_if(downloaded_files, [](const auto& f) { return !f.has_value(); });
 
         if (downloaded_files.empty()) {
           cielparser::TryNTimes<3>([&] {
@@ -85,7 +84,7 @@ class Bot final : public tgbotxx::Bot {
 
         if (downloaded_files.size() == 1) {
           cielparser::TryNTimes<3>([&] {
-            api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0]->string()), 0, std::monostate{},
+            api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0].string()), 0, std::monostate{},
                                 std::format("[source]({})", url), "MarkdownV2", {}, false, false, nullptr, "", 0, false,
                                 false, "", nullptr, cielparser::MakeReplyParameters(is_group, message->messageId));
           });
@@ -98,7 +97,7 @@ class Bot final : public tgbotxx::Bot {
           std::vector<tgbotxx::Ptr<tgbotxx::InputMedia>> media_group;
           for (size_t j = i; j < std::min(i + chunk_size, downloaded_files.size()); ++j) {
             auto input_media = std::make_shared<tgbotxx::InputMediaDocument>();
-            input_media->media = cpr::File(downloaded_files[j]->string());
+            input_media->media = cpr::File(downloaded_files[j].string());
             media_group.emplace_back(std::move(input_media));
           }
           media_group.back()->caption =
