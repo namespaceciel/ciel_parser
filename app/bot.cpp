@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <future>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <tgbotxx/tgbotxx.hpp>
 #include <thread>
@@ -104,15 +105,20 @@ class Bot final : public tgbotxx::Bot {
 
     constexpr size_t chunk_size = 10;
     const size_t total_chunks = (downloaded_files.size() + chunk_size - 1) / chunk_size;
-    for (size_t i = 0; i < downloaded_files.size(); i += chunk_size) {
+
+    size_t chunk_idx = 0;
+    for (auto chunk : downloaded_files | std::views::chunk(chunk_size)) {
       std::vector<tgbotxx::Ptr<tgbotxx::InputMedia>> media_group;
-      for (size_t j = i; j < std::min(i + chunk_size, downloaded_files.size()); ++j) {
+      media_group.reserve(chunk.size());
+
+      for (const auto& file : chunk) {
         auto input_media = std::make_shared<tgbotxx::InputMediaDocument>();
-        input_media->media = cpr::File(downloaded_files[j].string());
+        input_media->media = cpr::File(file.string());
         media_group.emplace_back(std::move(input_media));
       }
+
       media_group.back()->caption = total_chunks > 1
-                                        ? std::format("[source]({}) \\[{}/{}\\]", url, i / chunk_size + 1, total_chunks)
+                                        ? std::format("[source]({}) \\[{}/{}\\]", url, ++chunk_idx, total_chunks)
                                         : std::format("[source]({})", url);
       media_group.back()->parseMode = "MarkdownV2";
 
