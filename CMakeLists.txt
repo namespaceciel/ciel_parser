@@ -8,6 +8,8 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose build type: Debug/Release/RelWithDebInfo/MinSizeRel." FORCE)
 endif (NOT CMAKE_BUILD_TYPE)
 
+add_compile_options(-Wno-error)
+
 include(FetchContent)
 
 FetchContent_Declare(
