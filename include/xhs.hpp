@@ -26,57 +26,55 @@ class XHS {
   }
 
   static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    auto r = HttpGet(url, {{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
-                           {"Referer", "https://www.xiaohongshu.com/"}});
-    if (!r) {
-      return {};
-    }
-
-    size_t start = r->text.find("window.__INITIAL_STATE__=");
-    if (start == std::string::npos) {
-      LOG_ERROR(R"(Could not find "window.__INITIAL_STATE__=" in url {})", url);
-      return {};
-    }
-
-    start = r->text.find('{', start);
-    int balance = 0;
-    size_t end = start;
-    for (; end < r->text.size(); ++end) {
-      if (r->text[end] == '{') {
-        balance++;
-      } else if (r->text[end] == '}') {
-        balance--;
-      }
-      if (balance == 0 && end > start) {
-        break;
-      }
-    }
+    std::vector<std::string> res;
 
     try {
-      auto data = nlohmann::json::parse(SanitizeJson(r->text.substr(start, end - start + 1)));
-
-      if (!data.contains("note") || !data["note"].contains("firstNoteId")) {
-        LOG_ERROR(R"(Could not find data["note"]["firstNoteId"] in url)");
-        return {};
+      auto r = HttpGet(url, {{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
+                             {"Referer", "https://www.xiaohongshu.com/"}});
+      if (!r) {
+        return res;
       }
-      std::string nid = data["note"]["firstNoteId"];
 
+      const size_t start = r->text.find("window.__INITIAL_STATE__=");
+      if (start == std::string::npos) {
+        LOG_ERROR("Could not find window.__INITIAL_STATE__= in url {}", url);
+        return res;
+      }
+
+      const size_t json_start = r->text.find('{', start);
+      if (json_start == std::string::npos) {
+        return res;
+      }
+
+      size_t json_end = json_start;
+      for (int balance = 0; json_end < r->text.size(); ++json_end) {
+        if (r->text[json_end] == '{') {
+          ++balance;
+        } else if (r->text[json_end] == '}') {
+          --balance;
+        }
+        if (balance == 0) {
+          break;
+        }
+      }
+
+      if (json_end == r->text.size()) {
+        LOG_ERROR("Unbalanced braces in JSON state");
+        return res;
+      }
+
+      const std::string raw_json = SanitizeJson(r->text.substr(json_start, json_end - json_start + 1));
+      auto data = nlohmann::json::parse(raw_json);
+
+      const std::string nid = data["note"]["firstNoteId"];
       if (nid.empty()) {
         LOG_ERROR("Note ID is empty, note may not exist or requires login");
-        return {};
-      }
-
-      if (!data["note"]["noteDetailMap"].contains(nid)) {
-        LOG_ERROR(R"(Could not find data["note"]["noteDetailMap"][{}])", nid);
-        return {};
+        return res;
       }
 
       const auto& note_data = data["note"]["noteDetailMap"][nid]["note"];
 
       auto extract_video = [](const nlohmann::json& stream) -> std::string {
-        if (!stream.is_object()) {
-          return "";
-        }
         for (const char* codec : {"h264", "h265", "av1"}) {
           if (stream.contains(codec) && stream[codec].is_array() && !stream[codec].empty()) {
             return stream[codec][0].value("masterUrl", "");
@@ -86,42 +84,38 @@ class XHS {
       };
 
       if (note_data.value("type", "") == "video" && note_data.contains("video")) {
-        if (note_data["video"].contains("media") && note_data["video"]["media"].contains("stream")) {
-          if (std::string video_url = extract_video(note_data["video"]["media"]["stream"]); !video_url.empty()) {
-            return {std::move(video_url)};
-          }
+        if (std::string video_url = extract_video(note_data["video"]["media"]["stream"]); !video_url.empty()) {
+          res.emplace_back(std::move(video_url));
+          return res;
         }
       }
 
-      std::vector<std::string> res;
-      if (note_data.contains("imageList") && note_data["imageList"].is_array()) {
-        for (const auto& item : note_data["imageList"]) {
-          if (item.contains("stream")) {
-            if (std::string live_video_url = extract_video(item["stream"]); !live_video_url.empty()) {
-              res.emplace_back(std::move(live_video_url));
-            }
-          }
+      if (!note_data.contains("imageList") || !note_data["imageList"].is_array()) {
+        return res;
+      }
 
-          std::string raw_url;
-          if (item.contains("urlPre")) {
-            raw_url = item["urlPre"];
-          } else if (item.contains("urlDefault")) {
-            raw_url = item["urlDefault"];
-          } else {
-            LOG_WARNING("raw_url not found");
-            continue;
-          }
-
-          if (std::string key = ExtractImageKey(raw_url); !key.empty()) {
-            res.emplace_back(std::format("https://ci.xiaohongshu.com/{}", key));
+      for (const auto& item : note_data["imageList"]) {
+        if (item.contains("stream")) {
+          if (std::string live_video_url = extract_video(item["stream"]); !live_video_url.empty()) {
+            res.emplace_back(std::move(live_video_url));
           }
         }
+
+        const std::string raw_url = item.value("urlPre", item.value("urlDefault", ""));
+        if (raw_url.empty()) {
+          LOG_WARNING("raw_url not found in image item");
+          continue;
+        }
+
+        if (std::string key = ExtractImageKey(raw_url); !key.empty()) {
+          res.emplace_back(std::format("https://ci.xiaohongshu.com/{}", key));
+        }
       }
-      return res;
     } catch (const std::exception& e) {
-      LOG_ERROR(R"(e.what(): {})", e.what());
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
     }
-    return {};
+
+    return res;
   }
 
   static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
