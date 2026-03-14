@@ -25,18 +25,24 @@ class Twitter {
   }
 
   static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
-    auto r = HttpGet(std::format("https://api.vxtwitter.com/Twitter/status/{}", id));
-    if (!r) {
-      return {};
+    std::vector<std::string> res;
+
+    try {
+      const std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
+      const auto r = HttpGet(std::format("https://api.vxtwitter.com/Twitter/status/{}", id));
+      if (!r) {
+        return res;
+      }
+
+      if (const auto json = nlohmann::json::parse(r->text); json.contains("media_extended")) {
+        for (const auto& media : json["media_extended"]) {
+          res.emplace_back(media["url"].get<std::string>());
+        }
+      }
+    } catch (const std::exception& e) {
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
     }
 
-    std::vector<std::string> res;
-    if (auto json = nlohmann::json::parse(r->text, nullptr, false); json.contains("media_extended")) {
-      for (const auto& media : json["media_extended"]) {
-        res.emplace_back(media.value("url", ""));
-      }
-    }
     return res;
   }
 
