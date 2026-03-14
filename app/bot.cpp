@@ -83,13 +83,11 @@ class Bot final : public tgbotxx::Bot {
 
   void SendDownloadedFiles(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string& url,
                            const std::vector<std::filesystem::path>& downloaded_files) const {
-    const bool is_group = message->chat->type != tgbotxx::Chat::Type::Private;
-
     if (downloaded_files.empty()) {
       cielparser::TryNTimes<3>([&] {
         api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
                            false, nullptr, "", 0, nullptr, false, "", nullptr,
-                           cielparser::MakeReplyParameters(is_group, message->messageId));
+                           cielparser::MakeReplyParameters(message->messageId));
       });
       return;
     }
@@ -98,7 +96,7 @@ class Bot final : public tgbotxx::Bot {
       cielparser::TryNTimes<3>([&] {
         api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0].string()), 0, std::monostate{},
                             std::format("[source]({})", url), "MarkdownV2", {}, false, false, nullptr, "", 0, false,
-                            false, "", nullptr, cielparser::MakeReplyParameters(is_group, message->messageId));
+                            false, "", nullptr, cielparser::MakeReplyParameters(message->messageId));
       });
       return;
     }
@@ -124,7 +122,7 @@ class Bot final : public tgbotxx::Bot {
 
       cielparser::TryNTimes<3>([&] {
         api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "",
-                              cielparser::MakeReplyParameters(is_group, message->messageId));
+                              cielparser::MakeReplyParameters(message->messageId));
       });
     }
   }

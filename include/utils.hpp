@@ -62,12 +62,9 @@ inline std::filesystem::path SaveContents(const std::filesystem::path& download_
   }
 }
 
-inline tgbotxx::Ptr<tgbotxx::ReplyParameters> MakeReplyParameters(const bool is_group, const std::int32_t message_id) {
-  tgbotxx::Ptr<tgbotxx::ReplyParameters> reply_params;
-  if (is_group) {
-    reply_params = std::make_shared<tgbotxx::ReplyParameters>();
-    reply_params->messageId = message_id;
-  }
+inline tgbotxx::Ptr<tgbotxx::ReplyParameters> MakeReplyParameters(const std::int32_t message_id) {
+  const auto reply_params = std::make_shared<tgbotxx::ReplyParameters>();
+  reply_params->messageId = message_id;
   return reply_params;
 }
 
