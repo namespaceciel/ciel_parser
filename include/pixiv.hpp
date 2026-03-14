@@ -25,23 +25,29 @@ class Pixiv {
   }
 
   static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    const std::regex re(R"(artworks/(\d+))");
-    std::cmatch m;
-    if (!std::regex_search(url.begin(), url.end(), m, re)) {
-      LOG_ERROR("regex_search failed, url: {} ", url);
-      return {};
-    }
-
-    auto r = HttpGet(std::format("https://www.pixiv.net/ajax/illust/{}/pages", m[1].str()),
-                     {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
-    if (!r) {
-      return {};
-    }
-
     std::vector<std::string> res;
-    for (const auto& item : nlohmann::json::parse(r->text)["body"]) {
-      res.emplace_back(item["urls"]["original"].get<std::string>());
+
+    try {
+      const std::regex re(R"(artworks/(\d+))");
+      std::cmatch m;
+      if (!std::regex_search(url.begin(), url.end(), m, re)) {
+        LOG_ERROR("regex_search failed, url: {} ", url);
+        return res;
+      }
+
+      const auto r = HttpGet(std::format("https://www.pixiv.net/ajax/illust/{}/pages", m[1].str()),
+                             {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.pixiv.net/"}});
+      if (!r) {
+        return res;
+      }
+
+      for (const auto json = nlohmann::json::parse(r->text); const auto& item : json["body"]) {
+        res.emplace_back(item["urls"]["original"].get<std::string>());
+      }
+    } catch (const std::exception& e) {
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
     }
+
     return res;
   }
 
