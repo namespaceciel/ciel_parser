@@ -29,8 +29,9 @@ class XHS {
     std::vector<std::string> res;
 
     try {
-      auto r = HttpGet(url, {{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
-                             {"Referer", "https://www.xiaohongshu.com/"}});
+      const auto r =
+          HttpGet(url, {{"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
+                        {"Referer", "https://www.xiaohongshu.com/"}});
       if (!r) {
         return res;
       }
@@ -64,7 +65,7 @@ class XHS {
       }
 
       const std::string raw_json = SanitizeJson(r->text.substr(json_start, json_end - json_start + 1));
-      auto data = nlohmann::json::parse(raw_json);
+      const auto data = nlohmann::json::parse(raw_json);
 
       const std::string nid = data["note"]["firstNoteId"];
       if (nid.empty()) {
@@ -74,7 +75,7 @@ class XHS {
 
       const auto& note_data = data["note"]["noteDetailMap"][nid]["note"];
 
-      auto extract_video = [](const nlohmann::json& stream) -> std::string {
+      const auto extract_video = [](const nlohmann::json& stream) -> std::string {
         for (const char* codec : {"h264", "h265", "av1"}) {
           if (stream.contains(codec) && stream[codec].is_array() && !stream[codec].empty()) {
             return stream[codec][0].value("masterUrl", "");
@@ -107,7 +108,7 @@ class XHS {
           continue;
         }
 
-        if (std::string key = ExtractImageKey(raw_url); !key.empty()) {
+        if (const std::string key = ExtractImageKey(raw_url); !key.empty()) {
           res.emplace_back(std::format("https://ci.xiaohongshu.com/{}", key));
         }
       }
