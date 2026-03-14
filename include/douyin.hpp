@@ -29,27 +29,26 @@ class DouYin {
   static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
     std::vector<std::string> res;
 
-    const std::string python_script =
-        std::filesystem::path(__FILE__).parent_path().parent_path() / "scripts" / "douyin_parser.py";
-    const std::string cmd = std::format("python3 \"{}\" \"{}\" 2>/dev/null", python_script, url);
-
-    std::array<char, 128> buffer;
-    std::string output;
-    const std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-      LOG_ERROR("Failed to run douyin parser script");
-      return res;
-    }
-
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-      output += buffer.data();
-    }
-
-    if (output.empty()) {
-      return res;
-    }
-
     try {
+      const std::string python_script =
+          std::filesystem::path(__FILE__).parent_path().parent_path() / "scripts" / "douyin_parser.py";
+      const std::string cmd = std::format(R"(python3 "{}" "{}" 2>/dev/null)", python_script, url);
+
+      const std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+      if (!pipe) {
+        LOG_ERROR("Failed to run douyin parser script");
+        return res;
+      }
+
+      std::array<char, 128> buffer{};
+      std::string output;
+      while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        output += buffer.data();
+      }
+      if (output.empty()) {
+        return res;
+      }
+
       if (const auto json = nlohmann::json::parse(output); json.is_array()) {
         for (const auto& item : json) {
           if (item.is_string()) {
@@ -57,10 +56,12 @@ class DouYin {
           }
         }
       } else if (json.contains("error")) {
-        LOG_ERROR("DouYin parser error: {}", json["error"].get<std::string>());
+        LOG_ERROR(R"(DouYin parser error, json["error"]: {})", json["error"].get<std::string>());
+      } else {
+        LOG_ERROR("DouYin parser error, json: {}", json.get<std::string>());
       }
     } catch (const std::exception& e) {
-      LOG_ERROR("Failed to parse douyin parser output: {}", e.what());
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
     }
 
     return res;
