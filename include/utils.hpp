@@ -24,7 +24,7 @@ void TryNTimes(auto&& f) {
       return;
     } catch (const std::exception& e) {
       if (i + 1 < N) {
-        LOG_ERROR("exception caught: {}, sleep for 5 second and retry", e.what());
+        LOG_ERROR("exception caught, sleep for 5 second and retry: {}", e.what());
         std::this_thread::sleep_for(std::chrono::seconds(5));
       } else {
         LOG_ERROR("exception caught after {} retries: {}", N, e.what());
