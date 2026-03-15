@@ -83,21 +83,25 @@ class Bot final : public tgbotxx::Bot {
 
   void SendDownloadedFiles(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string& url,
                            const std::vector<std::filesystem::path>& downloaded_files) const {
+    const auto reply_params = cielparser::MakeReplyParameters(message->messageId);
+
     if (downloaded_files.empty()) {
       cielparser::TryNTimes<3>([&] {
         api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
-                           false, nullptr, "", 0, nullptr, false, "", nullptr,
-                           cielparser::MakeReplyParameters(message->messageId));
+                           false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
       });
       return;
     }
 
-    if (downloaded_files.size() == 1) {
+    auto send_single_doc = [&](const std::filesystem::path& file, const std::string& caption) {
       cielparser::TryNTimes<3>([&] {
-        api()->sendDocument(message->chat->id, cpr::File(downloaded_files[0].string()), 0, std::monostate{},
-                            std::format("[source]({})", url), "MarkdownV2", {}, false, false, nullptr, "", 0, false,
-                            false, "", nullptr, cielparser::MakeReplyParameters(message->messageId));
+        api()->sendDocument(message->chat->id, cpr::File(file.string()), 0, std::monostate{}, caption, "MarkdownV2", {},
+                            false, false, nullptr, "", 0, false, false, "", nullptr, reply_params);
       });
+    };
+
+    if (downloaded_files.size() == 1) {
+      send_single_doc(downloaded_files.front(), std::format("[source]({})", url));
       return;
     }
 
@@ -106,6 +110,15 @@ class Bot final : public tgbotxx::Bot {
 
     size_t chunk_idx = 0;
     for (auto chunk : downloaded_files | std::views::chunk(chunk_size)) {
+      const std::string caption = total_chunks > 1
+                                      ? std::format("[source]({}) \\[{}/{}\\]", url, ++chunk_idx, total_chunks)
+                                      : std::format("[source]({})", url);
+
+      if (chunk.size() == 1) {
+        send_single_doc(chunk.front(), caption);
+        continue;
+      }
+
       std::vector<tgbotxx::Ptr<tgbotxx::InputMedia>> media_group;
       media_group.reserve(chunk.size());
 
@@ -115,14 +128,11 @@ class Bot final : public tgbotxx::Bot {
         media_group.emplace_back(std::move(input_media));
       }
 
-      media_group.back()->caption = total_chunks > 1
-                                        ? std::format("[source]({}) \\[{}/{}\\]", url, ++chunk_idx, total_chunks)
-                                        : std::format("[source]({})", url);
+      media_group.back()->caption = caption;
       media_group.back()->parseMode = "MarkdownV2";
 
       cielparser::TryNTimes<3>([&] {
-        api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "",
-                              cielparser::MakeReplyParameters(message->messageId));
+        api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "", reply_params);
       });
     }
   }
