@@ -93,18 +93,6 @@ class Bot final : public tgbotxx::Bot {
       return;
     }
 
-    auto send_single_doc = [&](const std::filesystem::path& file, const std::string& caption) {
-      cielparser::TryNTimes<3>([&] {
-        api()->sendDocument(message->chat->id, cpr::File(file.string()), 0, std::monostate{}, caption, "MarkdownV2", {},
-                            false, false, nullptr, "", 0, false, false, "", nullptr, reply_params);
-      });
-    };
-
-    if (downloaded_files.size() == 1) {
-      send_single_doc(downloaded_files.front(), std::format("[source]({})", url));
-      return;
-    }
-
     constexpr size_t chunk_size = 10;
     const size_t total_chunks = (downloaded_files.size() + chunk_size - 1) / chunk_size;
 
@@ -115,7 +103,10 @@ class Bot final : public tgbotxx::Bot {
                                       : std::format("[source]({})", url);
 
       if (chunk.size() == 1) {
-        send_single_doc(chunk.front(), caption);
+        cielparser::TryNTimes<3>([&] {
+          api()->sendDocument(message->chat->id, cpr::File(chunk.front().string()), 0, std::monostate{}, caption,
+                              "MarkdownV2", {}, false, false, nullptr, "", 0, false, false, "", nullptr, reply_params);
+        });
         continue;
       }
 
