@@ -30,7 +30,12 @@ class Twitter {
     try {
       const std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
       const auto r = HttpGet(std::format("https://api.vxtwitter.com/Twitter/status/{}", id));
-      if (!r) {
+      if (!r || r->text.empty()) {
+        return res;
+      }
+
+      if (r->text[0] == '<') {
+        LOG_ERROR("vxtwitter API returned HTML instead of JSON for ID {}. The service might be down or blocking.", id);
         return res;
       }
 
