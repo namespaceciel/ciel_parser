@@ -93,38 +93,69 @@ class Bot final : public tgbotxx::Bot {
       return;
     }
 
+    std::vector<std::filesystem::path> documents, videos;
+    for (const auto& file : downloaded_files) {
+      if (file.extension() == ".mp4") {
+        videos.emplace_back(file);
+      } else {
+        documents.emplace_back(file);
+      }
+    }
+
     constexpr size_t chunk_size = 10;
-    const size_t total_chunks = (downloaded_files.size() + chunk_size - 1) / chunk_size;
+    const size_t total_chunks =
+        (documents.size() + chunk_size - 1) / chunk_size + (videos.size() + chunk_size - 1) / chunk_size;
 
     size_t chunk_idx = 0;
-    for (auto chunk : downloaded_files | std::views::chunk(chunk_size)) {
-      const std::string caption = total_chunks > 1
-                                      ? std::format("[source]({}) \\[{}/{}\\]", url, ++chunk_idx, total_chunks)
-                                      : std::format("[source]({})", url);
+    auto send_chunks = [&]<bool IsVideo>(const std::vector<std::filesystem::path>& files) {
+      for (auto chunk : files | std::views::chunk(chunk_size)) {
+        const std::string caption = total_chunks > 1
+                                        ? std::format("[source]({}) \\[{}/{}\\]", url, ++chunk_idx, total_chunks)
+                                        : std::format("[source]({})", url);
 
-      if (chunk.size() == 1) {
+        if (chunk.size() == 1) {
+          cielparser::TryNTimes<3>([&] {
+            if constexpr (IsVideo) {
+              api()->sendVideo(message->chat->id, cpr::File(chunk.front().string()), 0, 0, 0, 0, std::monostate{},
+                               std::monostate{}, 0, caption, "MarkdownV2", {}, false, false, false, false, false,
+                               nullptr, "", 0, false, "", nullptr, reply_params);
+            } else {
+              api()->sendDocument(message->chat->id, cpr::File(chunk.front().string()), 0, std::monostate{}, caption,
+                                  "MarkdownV2", {}, false, false, nullptr, "", 0, false, false, "", nullptr,
+                                  reply_params);
+            }
+          });
+          continue;
+        }
+
+        std::vector<tgbotxx::Ptr<tgbotxx::InputMedia>> media_group;
+        media_group.reserve(chunk.size());
+
+        for (const auto& file : chunk) {
+          tgbotxx::Ptr<tgbotxx::InputMedia> input_media;
+          if constexpr (IsVideo) {
+            input_media = std::make_shared<tgbotxx::InputMediaVideo>();
+          } else {
+            input_media = std::make_shared<tgbotxx::InputMediaDocument>();
+          }
+          input_media->media = cpr::File(file.string());
+          media_group.emplace_back(std::move(input_media));
+        }
+
+        media_group.back()->caption = caption;
+        media_group.back()->parseMode = "MarkdownV2";
+
         cielparser::TryNTimes<3>([&] {
-          api()->sendDocument(message->chat->id, cpr::File(chunk.front().string()), 0, std::monostate{}, caption,
-                              "MarkdownV2", {}, false, false, nullptr, "", 0, false, false, "", nullptr, reply_params);
+          api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "", reply_params);
         });
-        continue;
       }
+    };
 
-      std::vector<tgbotxx::Ptr<tgbotxx::InputMedia>> media_group;
-      media_group.reserve(chunk.size());
-
-      for (const auto& file : chunk) {
-        auto input_media = std::make_shared<tgbotxx::InputMediaDocument>();
-        input_media->media = cpr::File(file.string());
-        media_group.emplace_back(std::move(input_media));
-      }
-
-      media_group.back()->caption = caption;
-      media_group.back()->parseMode = "MarkdownV2";
-
-      cielparser::TryNTimes<3>([&] {
-        api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "", reply_params);
-      });
+    if (!documents.empty()) {
+      send_chunks.operator()<false>(documents);
+    }
+    if (!videos.empty()) {
+      send_chunks.operator()<true>(videos);
     }
   }
 
