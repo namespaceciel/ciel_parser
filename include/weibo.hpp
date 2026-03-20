@@ -67,6 +67,27 @@ class WeiBo {
           }
         }
       }
+
+      if (json.contains("mix_media_info") && json["mix_media_info"].contains("items")) {
+        for (const auto& item : json["mix_media_info"]["items"]) {
+          if (item.value("type", "") == "pic") {
+            if (item.contains("data") && item["data"].contains("largest") && item["data"]["largest"].contains("url")) {
+              res.emplace_back(item["data"]["largest"]["url"].get<std::string>());
+            }
+          } else if (item.value("type", "") == "video") {
+            if (item.contains("data") && item["data"].contains("media_info") &&
+                item["data"]["media_info"].contains("playback_list")) {
+              const auto& list = item["data"]["media_info"]["playback_list"];
+              const auto best = std::ranges::max_element(list, [](const auto& a, const auto& b) {
+                return a["play_info"].value("size", 0.0) < b["play_info"].value("size", 0.0);
+              });
+              if (best != list.end()) {
+                res.emplace_back((*best)["play_info"]["url"].get<std::string>());
+              }
+            }
+          }
+        }
+      }
     } catch (const std::exception& e) {
       LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
     }
