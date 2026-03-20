@@ -116,9 +116,10 @@ class Bot final : public tgbotxx::Bot {
         if (chunk.size() == 1) {
           cielparser::TryNTimes<3>([&] {
             if constexpr (IsVideo) {
-              api()->sendVideo(message->chat->id, cpr::File(chunk.front().string()), 0, 0, 0, 0, std::monostate{},
-                               std::monostate{}, 0, caption, "MarkdownV2", {}, false, false, false, false, false,
-                               nullptr, "", 0, false, "", nullptr, reply_params);
+              const auto info = cielparser::GetVideoInfo(chunk.front());
+              api()->sendVideo(message->chat->id, cpr::File(chunk.front().string()), 0, info.duration, info.width,
+                               info.height, std::monostate{}, std::monostate{}, 0, caption, "MarkdownV2", {}, false,
+                               false, true, false, false, nullptr, "", 0, false, "", nullptr, reply_params);
             } else {
               api()->sendDocument(message->chat->id, cpr::File(chunk.front().string()), 0, std::monostate{}, caption,
                                   "MarkdownV2", {}, false, false, nullptr, "", 0, false, false, "", nullptr,
@@ -134,7 +135,13 @@ class Bot final : public tgbotxx::Bot {
         for (const auto& file : chunk) {
           tgbotxx::Ptr<tgbotxx::InputMedia> input_media;
           if constexpr (IsVideo) {
-            input_media = std::make_shared<tgbotxx::InputMediaVideo>();
+            auto video = std::make_shared<tgbotxx::InputMediaVideo>();
+            const auto info = cielparser::GetVideoInfo(file);
+            video->width = info.width;
+            video->height = info.height;
+            video->duration = info.duration;
+            video->supportsStreaming = true;
+            input_media = std::move(video);
           } else {
             input_media = std::make_shared<tgbotxx::InputMediaDocument>();
           }

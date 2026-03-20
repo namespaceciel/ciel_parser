@@ -33,8 +33,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tgbotxx)
 
+FetchContent_Declare(
+        minimp4
+        GIT_REPOSITORY https://github.com/lieff/minimp4.git
+        GIT_TAG master
+)
+FetchContent_MakeAvailable(minimp4)
+
 add_library(ciel_parser INTERFACE)
-target_include_directories(ciel_parser INTERFACE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(ciel_parser INTERFACE ${CMAKE_SOURCE_DIR}/include ${minimp4_SOURCE_DIR})
 target_link_libraries(ciel_parser INTERFACE
         nlohmann_json
         quill

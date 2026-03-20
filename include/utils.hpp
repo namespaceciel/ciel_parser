@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cpr/cpr.h>
+#define MINIMP4_IMPLEMENTATION
+#include <minimp4.h>
 
 #include <chrono>
 #include <exception>
@@ -66,6 +68,50 @@ inline tgbotxx::Ptr<tgbotxx::ReplyParameters> MakeReplyParameters(const std::int
   const auto reply_params = std::make_shared<tgbotxx::ReplyParameters>();
   reply_params->messageId = message_id;
   return reply_params;
+}
+
+struct VideoInfo {
+  unsigned int width{};
+  unsigned int height{};
+  unsigned int duration{};
+};
+
+inline VideoInfo GetVideoInfo(const std::filesystem::path& file_path) {
+  auto Mp4ReadCallback = [](const int64_t offset, void* buffer, const size_t size, void* token) -> int {
+    auto* f = static_cast<std::ifstream*>(token);
+    f->seekg(offset, std::ios::beg);
+    if (!f->read(static_cast<char*>(buffer), size)) {
+      return f->gcount() != size;
+    }
+    return 0;
+  };
+
+  VideoInfo info;
+  std::ifstream file(file_path, std::ios::binary | std::ios::ate);
+  if (!file) {
+    return info;
+  }
+
+  const auto file_size = file.tellg();
+  file.seekg(0, std::ios::beg);
+
+  MP4D_demux_t mp4{};
+  if (MP4D_open(&mp4, Mp4ReadCallback, &file, file_size) == 1) {
+    if (mp4.timescale > 0) {
+      const uint64_t duration = (static_cast<uint64_t>(mp4.duration_hi) << 32) | mp4.duration_lo;
+      info.duration = static_cast<int>(duration / mp4.timescale);
+    }
+    for (unsigned i = 0; i < mp4.track_count; ++i) {
+      if (mp4.track[i].handler_type == MP4D_HANDLER_TYPE_VIDE) {
+        info.width = mp4.track[i].SampleDescription.video.width;
+        info.height = mp4.track[i].SampleDescription.video.height;
+        break;
+      }
+    }
+    MP4D_close(&mp4);
+  }
+
+  return info;
 }
 
 }  // namespace cielparser
