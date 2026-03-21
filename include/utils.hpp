@@ -53,10 +53,13 @@ inline std::optional<cpr::Response> HttpGet(const std::string_view url, const cp
 inline std::filesystem::path SaveContents(const std::filesystem::path& download_dir, const std::string_view ext,
                                           const std::string_view download_link, const std::string_view file_contents) {
   while (true) {
+    const auto now = std::chrono::system_clock::now();
+    const auto now_local = std::chrono::current_zone()->to_local(now);
+    const auto now_sec = std::chrono::floor<std::chrono::seconds>(now_local);
     const auto nanos =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch())
-            .count();
-    auto filepath = download_dir / std::format("{}{}", nanos, ext);
+        std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count() % 1'000'000'000;
+
+    auto filepath = download_dir / std::format("{:%Y%m%d_%H%M%S}_{:09d}{}", now_sec, nanos, ext);
     std::ofstream ofs(filepath, std::ios::out | std::ios::binary | std::ios::noreplace);
     if (!ofs) {
       continue;
