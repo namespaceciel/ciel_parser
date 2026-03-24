@@ -22,14 +22,14 @@ FetchContent_MakeAvailable(nlohmann_json)
 FetchContent_Declare(
         quill
         GIT_REPOSITORY https://github.com/odygrd/quill.git
-        GIT_TAG v11.0.2
+        GIT_TAG v11.1.0
 )
 FetchContent_MakeAvailable(quill)
 
 FetchContent_Declare(
         tgbotxx
         GIT_REPOSITORY https://github.com/baderouaich/tgbotxx.git
-        GIT_TAG v1.2.9.5_dev
+        GIT_TAG v1.2.9.5
 )
 FetchContent_MakeAvailable(tgbotxx)
 
