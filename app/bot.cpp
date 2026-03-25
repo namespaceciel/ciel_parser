@@ -30,6 +30,17 @@ class Bot final : public tgbotxx::Bot {
   ~Bot() override = default;
 
  private:
+  void onStart() override {
+    LOG_INFO("Testing API connectivity...");
+    const auto me = api()->getMe();
+    LOG_INFO("Bot connected: {} (@{})", me->firstName, me->username);
+  }
+
+  void onLongPollError(const std::string& errMsg, tgbotxx::ErrorCode errorCode) override {
+    LOG_ERROR("Long poll error ({}): {}", static_cast<int>(errorCode), errMsg);
+    std::this_thread::sleep_for(std::chrono::minutes(1));
+  }
+
   static constexpr auto kPlatforms = std::tuple<cielparser::XHS, cielparser::WeiBo, cielparser::Twitter,
                                                 cielparser::Pixiv, cielparser::Bilibili, cielparser::DouYin>{};
 
