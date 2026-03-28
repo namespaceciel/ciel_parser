@@ -1,7 +1,8 @@
+#include <algorithm>
 #include <filesystem>
 #include <future>
 #include <optional>
-#include <ranges>
+#include <span>
 #include <string>
 #include <tgbotxx/tgbotxx.hpp>
 #include <thread>
@@ -119,7 +120,8 @@ class Bot final : public tgbotxx::Bot {
 
     size_t chunk_idx = 0;
     auto send_chunks = [&]<bool IsVideo>(const std::vector<std::filesystem::path>& files) {
-      for (auto chunk : files | std::views::chunk(chunk_size)) {
+      for (size_t i = 0; i < files.size(); i += chunk_size) {
+        auto chunk = std::span(files).subspan(i, std::min(chunk_size, files.size() - i));
         const std::string caption = total_chunks > 1
                                         ? std::format("[source]({}) \\[{}/{}\\]", url, ++chunk_idx, total_chunks)
                                         : std::format("[source]({})", url);
