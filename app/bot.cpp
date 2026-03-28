@@ -29,7 +29,6 @@ class Bot final : public tgbotxx::Bot {
 
   ~Bot() override = default;
 
- private:
   void onStart() override {
     LOG_INFO("Testing API connectivity...");
     const auto me = api()->getMe();
@@ -58,6 +57,7 @@ class Bot final : public tgbotxx::Bot {
                kPlatforms);
   }
 
+ private:
   template <class Platform>
   void ProcessMessage(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string_view message_content) const {
     for (const auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
