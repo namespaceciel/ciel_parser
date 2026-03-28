@@ -40,6 +40,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(minimp4)
 
+FetchContent_Declare(
+        Boost
+        URL https://github.com/boostorg/boost/releases/download/boost-1.90.0/boost-1.90.0-cmake.tar.xz
+        URL_HASH SHA256=aca59f889f0f32028ad88ba6764582b63c916ce5f77b31289ad19421a96c555f
+)
+FetchContent_MakeAvailable(Boost)
+
 add_library(ciel_parser INTERFACE)
 target_include_directories(ciel_parser INTERFACE ${CMAKE_SOURCE_DIR}/include ${minimp4_SOURCE_DIR})
 target_link_libraries(ciel_parser INTERFACE
@@ -49,7 +56,7 @@ target_link_libraries(ciel_parser INTERFACE
 )
 
 add_executable(ciel_parser_bot app/bot.cpp)
-target_link_libraries(ciel_parser_bot PRIVATE ciel_parser)
+target_link_libraries(ciel_parser_bot PRIVATE ciel_parser Boost::process)
 
 add_executable(ciel_parser_test test/test.cpp)
 target_link_libraries(ciel_parser_test PRIVATE ciel_parser)

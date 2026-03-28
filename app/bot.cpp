@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <boost/asio/io_context.hpp>
+#include <boost/process.hpp>
 #include <filesystem>
 #include <future>
 #include <optional>
@@ -23,9 +25,7 @@ class Bot final : public tgbotxx::Bot {
  public:
   explicit Bot(cielparser::Config config)
       : tgbotxx::Bot(config.bot_token), download_dir_(std::move(config.download_dir)) {
-    if (!config.tg_api_endpoint.empty()) {
-      api()->setUrl(config.tg_api_endpoint);
-    }
+    api()->setUrl(std::format("http://127.0.0.1:{}", config.tg_api_http_port));
   }
 
   ~Bot() override = default;
@@ -197,6 +197,21 @@ int main() {
 
   cielparser::SetupQuill(config.log_path);
   std::filesystem::create_directories(config.download_dir);
+
+  const auto exe = boost::process::environment::find_executable("telegram-bot-api");
+  if (exe.empty()) {
+    throw std::runtime_error("telegram-bot-api not found in PATH");
+  }
+
+  boost::asio::io_context ctx;
+  boost::process::process tg_api(
+      ctx, exe,
+      {"--local", "--api-id", config.api_id, "--api-hash", config.api_hash, "--http-port", config.tg_api_http_port});
+
+  LOG_INFO("Waiting for telegram-bot-api to start...");
+  std::this_thread::sleep_for(std::chrono::seconds(3));
+  LOG_INFO("telegram-bot-api started on port {}", config.tg_api_http_port);
+
   Bot bot(std::move(config));
   LOG_INFO("Starting bot...");
   bot.start();

@@ -1,6 +1,8 @@
 {
     "bot_token": "",
-    "tg_api_endpoint": "https://api.telegram.org",
+    "api_id": "",
+    "api_hash": "",
+    "tg_api_http_port": "8081",
     "download_dir": "",
     "log_path": ""
 }
