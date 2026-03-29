@@ -47,6 +47,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Boost)
 
+FetchContent_Declare(
+        gflags
+        GIT_REPOSITORY https://github.com/gflags/gflags.git
+        GIT_TAG v2.3.0
+)
+FetchContent_MakeAvailable(gflags)
+
 add_library(ciel_parser INTERFACE)
 target_include_directories(ciel_parser INTERFACE ${CMAKE_SOURCE_DIR}/include ${minimp4_SOURCE_DIR})
 target_link_libraries(ciel_parser INTERFACE
@@ -56,7 +63,11 @@ target_link_libraries(ciel_parser INTERFACE
 )
 
 add_executable(ciel_parser_bot app/bot.cpp)
-target_link_libraries(ciel_parser_bot PRIVATE ciel_parser Boost::process)
+target_link_libraries(ciel_parser_bot PRIVATE
+        ciel_parser
+        Boost::process
+        gflags
+)
 
 add_executable(ciel_parser_test test/test.cpp)
 target_link_libraries(ciel_parser_test PRIVATE ciel_parser)

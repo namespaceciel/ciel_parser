@@ -1,3 +1,5 @@
+#include <gflags/gflags.h>
+
 #include <algorithm>
 #include <boost/asio/io_context.hpp>
 #include <boost/process.hpp>
@@ -20,6 +22,8 @@
 #include "utils.hpp"
 #include "weibo.hpp"
 #include "xhs.hpp"
+
+DEFINE_string(config, "", "See config.json.example");
 
 class Bot final : public tgbotxx::Bot {
  public:
@@ -182,15 +186,12 @@ class Bot final : public tgbotxx::Bot {
   std::filesystem::path download_dir_;
 };
 
-int main() {
-  const char* config_path = std::getenv("CIELPARSER_CONFIG_PATH");
-  if (!config_path) {
-    throw std::runtime_error("CIELPARSER_CONFIG_PATH env not set");
+int main(int argc, char* argv[]) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+  if (!std::filesystem::exists(FLAGS_config)) {
+    throw std::runtime_error(std::format("Config file {} not found", FLAGS_config));
   }
-  if (!std::filesystem::exists(config_path)) {
-    throw std::runtime_error(std::format("Config file {} not found", config_path));
-  }
-  cielparser::Config config = nlohmann::json::parse(std::ifstream{config_path});
+  cielparser::Config config = nlohmann::json::parse(std::ifstream{FLAGS_config});
   if (config.bot_token.empty()) {
     throw std::runtime_error("bot_token is empty in config");
   }
