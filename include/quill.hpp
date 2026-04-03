@@ -7,7 +7,7 @@
 #include <quill/LogMacros.h>
 #include <quill/Logger.h>
 #include <quill/sinks/ConsoleSink.h>
-#include <quill/sinks/FileSink.h>
+#include <quill/sinks/RotatingFileSink.h>
 
 namespace cielparser {
 
@@ -21,7 +21,12 @@ inline void SetupQuill(const std::filesystem::path& log_path) {
   formatter_options.timestamp_pattern = "%Y-%m-%d %H:%M:%S.%Qns";
   formatter_options.add_metadata_to_multi_line_logs = false;
   auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1");
-  auto file_sink = quill::Frontend::create_or_get_sink<quill::FileSink>(log_path);
+  auto file_sink = quill::Frontend::create_or_get_sink<quill::RotatingFileSink>(log_path, [] {
+    quill::RotatingFileSinkConfig cfg;
+    cfg.set_rotation_max_file_size(64 * 1024);
+    cfg.set_rotation_naming_scheme(quill::RotatingFileSinkConfig::RotationNamingScheme::Date);
+    return cfg;
+  }());
   g_quill_logger = quill::Frontend::create_or_get_logger("root", {console_sink, file_sink}, formatter_options);
 }
 
