@@ -23,7 +23,7 @@ inline void SetupQuill(const std::filesystem::path& log_path) {
   auto console_sink = quill::Frontend::create_or_get_sink<quill::ConsoleSink>("sink_id_1");
   auto file_sink = quill::Frontend::create_or_get_sink<quill::RotatingFileSink>(log_path, [] {
     quill::RotatingFileSinkConfig cfg;
-    cfg.set_rotation_max_file_size(64 * 1024);
+    cfg.set_rotation_max_file_size(1024 * 1024);
     cfg.set_rotation_naming_scheme(quill::RotatingFileSinkConfig::RotationNamingScheme::Date);
     return cfg;
   }());

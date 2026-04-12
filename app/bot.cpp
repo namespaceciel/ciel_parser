@@ -102,7 +102,7 @@ class Bot final : public tgbotxx::Bot {
     const auto reply_params = cielparser::MakeReplyParameters(message->messageId);
 
     if (downloaded_files.empty()) {
-      cielparser::TryNTimes<3>([&] {
+      cielparser::TryNTimes<1>([&] {
         api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
                            false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
       });
@@ -131,7 +131,7 @@ class Bot final : public tgbotxx::Bot {
                                         : std::format("[source]({})", url);
 
         if (chunk.size() == 1) {
-          cielparser::TryNTimes<3>([&] {
+          cielparser::TryNTimes<1>([&] {
             if constexpr (IsVideo) {
               const auto info = cielparser::GetVideoInfo(chunk.front());
               api()->sendVideo(message->chat->id, cpr::File(chunk.front().string()), 0, info.duration, info.width,
@@ -169,7 +169,7 @@ class Bot final : public tgbotxx::Bot {
         media_group.back()->caption = caption;
         media_group.back()->parseMode = "MarkdownV2";
 
-        cielparser::TryNTimes<3>([&] {
+        cielparser::TryNTimes<1>([&] {
           api()->sendMediaGroup(message->chat->id, media_group, 0, false, false, "", 0, false, "", reply_params);
         });
       }
