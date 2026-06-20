@@ -20,7 +20,7 @@ prepare:
 
 bot:
 	cmake --build $(BUILD_DIR) --target ciel_parser_bot --parallel $(NUM_JOB)
-	CIELPARSER_CONFIG_PATH=$(PROJECT_SOURCE_DIR)/config.json $(BUILD_DIR)/ciel_parser_bot
+	$(BUILD_DIR)/ciel_parser_bot --config $(PROJECT_SOURCE_DIR)/config.json
 .PHONY: bot
 
 test:
