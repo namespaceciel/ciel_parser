@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cpr/cpr.h>
-#define MINIMP4_IMPLEMENTATION
-#include <minimp4.h>
 
 #include <chrono>
 #include <ctime>
@@ -88,39 +86,59 @@ struct VideoInfo {
   unsigned int duration{};
 };
 
-inline VideoInfo GetVideoInfo(const std::filesystem::path& file_path) {
-  auto Mp4ReadCallback = [](const int64_t offset, void* buffer, const size_t size, void* token) -> int {
-    auto* f = static_cast<std::ifstream*>(token);
-    f->seekg(offset, std::ios::beg);
-    if (!f->read(static_cast<char*>(buffer), size)) {
-      return f->gcount() != size;
-    }
-    return 0;
-  };
+inline uint32_t ReadBE32(const uint8_t* data) {
+  return (uint32_t(data[0]) << 24) | (uint32_t(data[1]) << 16) | (uint32_t(data[2]) << 8) | uint32_t(data[3]);
+}
 
+inline uint64_t ReadBE64(const uint8_t* data) { return (uint64_t(ReadBE32(data)) << 32) | ReadBE32(data + 4); }
+
+inline VideoInfo GetVideoInfo(const std::filesystem::path& file_path) {
   VideoInfo info;
   std::ifstream file(file_path, std::ios::binary | std::ios::ate);
   if (!file) {
     return info;
   }
 
-  const auto file_size = file.tellg();
-  file.seekg(0, std::ios::beg);
+  const auto file_size = static_cast<size_t>(file.tellg());
+  if (file_size < 8) {
+    return info;
+  }
 
-  MP4D_demux_t mp4{};
-  if (MP4D_open(&mp4, Mp4ReadCallback, &file, file_size) == 1) {
-    if (mp4.timescale > 0) {
-      const uint64_t duration = (static_cast<uint64_t>(mp4.duration_hi) << 32) | mp4.duration_lo;
-      info.duration = static_cast<int>(duration / mp4.timescale);
-    }
-    for (unsigned i = 0; i < mp4.track_count; ++i) {
-      if (mp4.track[i].handler_type == MP4D_HANDLER_TYPE_VIDE) {
-        info.width = mp4.track[i].SampleDescription.video.width;
-        info.height = mp4.track[i].SampleDescription.video.height;
-        break;
+  file.seekg(0, std::ios::beg);
+  std::vector<uint8_t> buffer(file_size);
+  file.read(reinterpret_cast<char*>(buffer.data()), static_cast<std::streamsize>(file_size));
+
+  constexpr uint32_t kMvhd = 0x6D766864;
+  constexpr uint32_t kTkhd = 0x746B6864;
+
+  for (size_t pos = 0; pos + 8 < file_size; ++pos) {
+    const uint32_t tag = ReadBE32(buffer.data() + pos);
+
+    if (tag == kMvhd) {
+      const uint8_t version = buffer[pos + 4];
+      if (version == 0 && pos + 24 <= file_size) {
+        const uint32_t timescale = ReadBE32(buffer.data() + pos + 16);
+        const uint32_t duration = ReadBE32(buffer.data() + pos + 20);
+        if (timescale > 0) {
+          info.duration = static_cast<unsigned int>(duration / timescale);
+        }
+      } else if (version == 1 && pos + 36 <= file_size) {
+        const uint32_t timescale = ReadBE32(buffer.data() + pos + 24);
+        const uint64_t duration = ReadBE64(buffer.data() + pos + 28);
+        if (timescale > 0) {
+          info.duration = static_cast<unsigned int>(duration / timescale);
+        }
+      }
+    } else if (tag == kTkhd && info.width == 0) {
+      const uint8_t version = buffer[pos + 4];
+      if (version == 0 && pos + 88 <= file_size) {
+        info.width = ReadBE32(buffer.data() + pos + 80) >> 16;
+        info.height = ReadBE32(buffer.data() + pos + 84) >> 16;
+      } else if (version == 1 && pos + 100 <= file_size) {
+        info.width = ReadBE32(buffer.data() + pos + 92) >> 16;
+        info.height = ReadBE32(buffer.data() + pos + 96) >> 16;
       }
     }
-    MP4D_close(&mp4);
   }
 
   return info;
