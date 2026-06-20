@@ -7,3 +7,4 @@ downloads/
 .idea/
 .DS_Store
 *.log
+logs/
