@@ -27,8 +27,8 @@ class Bilibili {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
+  static LinksResult GetDownloadLinks(const std::string_view url) {
+    LinksResult result;
 
     try {
       cpr::Session session;
@@ -41,13 +41,14 @@ class Bilibili {
       const std::regex bv_re(R"(BV[a-zA-Z0-9]{10})");
       std::smatch match;
       if (!std::regex_search(final_url, match, bv_re)) {
-        return res;
+        return result;
       }
 
       const std::string bvid = match.str();
       const auto view_resp = HttpGet(std::format("https://api.bilibili.com/x/web-interface/view?bvid={}", bvid));
       if (!view_resp) {
-        return res;
+        result.errors.emplace_back(ErrorCode::HttpError);
+        return result;
       }
 
       for (const auto view_json = nlohmann::json::parse(view_resp->text);
@@ -57,26 +58,30 @@ class Bilibili {
             HttpGet(std::format("https://api.bilibili.com/x/player/playurl?bvid={}&cid={}&qn=120", bvid, cid),
                     {{"Referer", "https://www.bilibili.com"}, {"User-Agent", "Mozilla/5.0"}});
         if (!play_resp) {
+          result.errors.emplace_back(ErrorCode::HttpError);
           continue;
         }
 
         for (const auto play_json = nlohmann::json::parse(play_resp->text);
              const auto& item : play_json["data"]["durl"]) {
-          res.emplace_back(item["url"].get<std::string>());
+          result.links.emplace_back(item["url"].get<std::string>());
         }
       }
+    } catch (const nlohmann::json::parse_error& e) {
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::ParseError);
     } catch (const std::exception& e) {
       LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::UnknownError);
     }
 
-    return res;
+    return result;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static FileResult DownloadFile(const std::string_view download_link, const std::filesystem::path& download_dir) {
     const auto r = HttpGet(download_link, {{"User-Agent", "Mozilla/5.0"}, {"Referer", "https://www.bilibili.com"}});
     if (!r) {
-      return std::nullopt;
+      return std::unexpected(ErrorCode::HttpError);
     }
 
     const auto ext = download_link.substr(download_link.rfind('.'), download_link.find('?') - download_link.rfind('.'));

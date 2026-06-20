@@ -26,8 +26,8 @@ class DouYin {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
+  static LinksResult GetDownloadLinks(const std::string_view url) {
+    LinksResult result;
 
     try {
       const std::string python_script =
@@ -37,7 +37,8 @@ class DouYin {
       const std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
       if (!pipe) {
         LOG_ERROR("Failed to run douyin parser script");
-        return res;
+        result.errors.emplace_back(ErrorCode::ScriptError);
+        return result;
       }
 
       std::array<char, 128> buffer{};
@@ -46,32 +47,38 @@ class DouYin {
         output += buffer.data();
       }
       if (output.empty()) {
-        return res;
+        result.errors.emplace_back(ErrorCode::ScriptError);
+        return result;
       }
 
       if (const auto json = nlohmann::json::parse(output); json.is_array()) {
         for (const auto& item : json) {
           if (item.is_string()) {
-            res.emplace_back(item.get<std::string>());
+            result.links.emplace_back(item.get<std::string>());
           }
         }
       } else if (json.contains("error")) {
         LOG_ERROR(R"(DouYin parser error, json["error"]: {})", json["error"].get<std::string>());
+        result.errors.emplace_back(ErrorCode::ScriptError);
       } else {
         LOG_ERROR("DouYin parser error, json: {}", json.get<std::string>());
+        result.errors.emplace_back(ErrorCode::ParseError);
       }
+    } catch (const nlohmann::json::parse_error& e) {
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::ParseError);
     } catch (const std::exception& e) {
       LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::UnknownError);
     }
 
-    return res;
+    return result;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static FileResult DownloadFile(const std::string_view download_link, const std::filesystem::path& download_dir) {
     auto r = HttpGet(download_link, {{"Referer", "https://www.douyin.com/"}});
     if (!r) {
-      return std::nullopt;
+      return std::unexpected(ErrorCode::HttpError);
     }
 
     std::string ext = ".bin";

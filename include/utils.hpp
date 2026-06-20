@@ -7,11 +7,14 @@
 #include <chrono>
 #include <ctime>
 #include <exception>
+#include <expected>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "quill.hpp"
@@ -121,6 +124,61 @@ inline VideoInfo GetVideoInfo(const std::filesystem::path& file_path) {
   }
 
   return info;
+}
+
+enum struct ErrorCode {
+  HttpError,
+  ParseError,
+  ServiceUnavailable,
+  AccessDenied,
+  ScriptError,
+  FileWriteError,
+  UnknownError,
+};
+
+inline bool operator<(ErrorCode a, ErrorCode b) noexcept { return std::to_underlying(a) < std::to_underlying(b); }
+
+struct LinksResult {
+  std::vector<std::string> links;
+  std::vector<ErrorCode> errors;
+};
+
+using FileResult = std::expected<std::filesystem::path, ErrorCode>;
+
+inline std::string_view ErrorCodeToString(ErrorCode code) {
+  switch (code) {
+    case ErrorCode::HttpError:
+      return "Http Error";
+    case ErrorCode::ParseError:
+      return "Parse Error";
+    case ErrorCode::ServiceUnavailable:
+      return "Service Unavailable";
+    case ErrorCode::AccessDenied:
+      return "Access Denied";
+    case ErrorCode::ScriptError:
+      return "Script Error";
+    case ErrorCode::FileWriteError:
+      return "File Write Error";
+    case ErrorCode::UnknownError:
+      return "Unknown Error";
+  }
+  std::unreachable();
+}
+
+inline std::string FormatErrors(const std::vector<ErrorCode>& errors) {
+  std::map<ErrorCode, size_t> counts;
+  for (auto e : errors) {
+    ++counts[e];
+  }
+
+  std::string result;
+  for (auto it = counts.begin(); it != counts.end(); ++it) {
+    if (!result.empty()) {
+      result += ", ";
+    }
+    result += std::format("{} ({})", ErrorCodeToString(it->first), it->second);
+  }
+  return result;
 }
 
 }  // namespace cielparser

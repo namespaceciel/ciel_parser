@@ -24,35 +24,40 @@ class Twitter {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
+  static LinksResult GetDownloadLinks(const std::string_view url) {
+    LinksResult result;
 
     try {
       const std::string id = std::regex_replace(std::string{url}, std::regex(R"(^.*status/(\d+).*$)"), "$1");
       const auto r = HttpGet(std::format("https://api.vxtwitter.com/Twitter/status/{}", id));
       if (!r || r->text.empty()) {
-        return res;
+        result.errors.emplace_back(ErrorCode::HttpError);
+        return result;
       }
 
       if (r->text[0] == '<') {
         LOG_ERROR("vxtwitter API returned HTML instead of JSON for ID {}. The service might be down or blocking.", id);
-        return res;
+        result.errors.emplace_back(ErrorCode::AccessDenied);
+        return result;
       }
 
       if (const auto json = nlohmann::json::parse(r->text); json.contains("media_extended")) {
         for (const auto& media : json["media_extended"]) {
-          res.emplace_back(media["url"].get<std::string>());
+          result.links.emplace_back(media["url"].get<std::string>());
         }
       }
+    } catch (const nlohmann::json::parse_error& e) {
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::ParseError);
     } catch (const std::exception& e) {
       LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::UnknownError);
     }
 
-    return res;
+    return result;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static FileResult DownloadFile(const std::string_view download_link, const std::filesystem::path& download_dir) {
     const auto url_prefix = download_link.substr(0, download_link.find('?'));
     auto ext = std::filesystem::path(url_prefix).extension().string();
     if (ext.empty()) {
@@ -69,7 +74,7 @@ class Twitter {
 
     const auto r = HttpGet(final_download_link);
     if (!r) {
-      return std::nullopt;
+      return std::unexpected(ErrorCode::HttpError);
     }
     return SaveContents(download_dir, ext, final_download_link, r->text);
   }

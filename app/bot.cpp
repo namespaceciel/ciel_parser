@@ -74,14 +74,14 @@ class Bot final : public tgbotxx::Bot {
   void ProcessUrl(const tgbotxx::Ptr<tgbotxx::Message> message, const std::string& url) const {
     constexpr auto platform_name = Platform::NAME;
 
-    const std::vector<std::string> download_links = Platform::GetDownloadLinks(url);
+    auto [download_links, errors] = Platform::GetDownloadLinks(url);
     LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
 
-    if (download_links.empty()) {
+    if (download_links.empty() && errors.empty()) {
       return;
     }
 
-    std::vector<std::future<std::optional<std::filesystem::path>>> futures;
+    std::vector<std::future<cielparser::FileResult>> futures;
     futures.reserve(download_links.size());
     for (const auto& link : download_links) {
       futures.emplace_back(std::async(std::launch::async, [this, link] {
@@ -95,22 +95,28 @@ class Bot final : public tgbotxx::Bot {
     for (auto& future : futures) {
       if (auto res = future.get(); res.has_value()) {
         downloaded_files.emplace_back(std::move(*res));
+      } else {
+        errors.emplace_back(res.error());
       }
     }
 
-    SendDownloadedFiles(message, url, downloaded_files, download_links.size());
+    SendDownloadedFiles(message, url, downloaded_files, download_links.size(), errors);
   }
 
   void SendDownloadedFiles(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string& url,
-                           const std::vector<std::filesystem::path>& downloaded_files, size_t total_links) const {
+                           const std::vector<std::filesystem::path>& downloaded_files, size_t total_links,
+                           const std::vector<cielparser::ErrorCode>& errors) const {
     const auto reply_params = cielparser::MakeReplyParameters(message->messageId);
 
     if (downloaded_files.empty()) {
-      cielparser::TryNTimes<1>([&] {
-        api()->sendMessage(message->chat->id,
-                           std::format("{}/{} downloads failed, please retry", total_links, total_links), 0, "", {},
-                           false, false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
-      });
+      const std::string error_msg = cielparser::FormatErrors(errors);
+      if (!error_msg.empty()) {
+        cielparser::TryNTimes<1>([&] {
+          api()->sendMessage(message->chat->id,
+                             std::format("{}/{} downloads failed, error msg: {}", total_links, total_links, error_msg),
+                             0, "", {}, false, false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
+        });
+      }
       return;
     }
 
@@ -187,12 +193,21 @@ class Bot final : public tgbotxx::Bot {
       send_chunks.operator()<true>(videos);
     }
 
-    if (const size_t failed_count = total_links - downloaded_files.size(); failed_count != 0) {
-      cielparser::TryNTimes<1>([&] {
-        api()->sendMessage(message->chat->id,
-                           std::format("{}/{} downloads failed, please retry", failed_count, total_links), 0, "", {},
-                           false, false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
-      });
+    const size_t failed_count = total_links - downloaded_files.size();
+    const std::string error_msg = cielparser::FormatErrors(errors);
+    if (!error_msg.empty()) {
+      if (failed_count != 0) {
+        cielparser::TryNTimes<1>([&] {
+          api()->sendMessage(message->chat->id,
+                             std::format("{}/{} downloads failed, error msg: {}", failed_count, total_links, error_msg),
+                             0, "", {}, false, false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
+        });
+      } else {
+        cielparser::TryNTimes<1>([&] {
+          api()->sendMessage(message->chat->id, std::format("error msg: {}", error_msg), 0, "", {}, false, false,
+                             nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
+        });
+      }
     }
   }
 

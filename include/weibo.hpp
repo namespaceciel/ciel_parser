@@ -23,8 +23,8 @@ class WeiBo {
     return GetMatchedUrlsFromPattern(message, url_pattern);
   }
 
-  static std::vector<std::string> GetDownloadLinks(const std::string_view url) {
-    std::vector<std::string> res;
+  static LinksResult GetDownloadLinks(const std::string_view url) {
+    LinksResult result;
 
     try {
       std::string id(url.substr(url.find_last_of('/') + 1));
@@ -45,14 +45,15 @@ class WeiBo {
            {"Client-Version", "v2.44.0"}},
           {{"id", id}});
       if (!r) {
-        return res;
+        result.errors.emplace_back(ErrorCode::HttpError);
+        return result;
       }
 
       const auto json = nlohmann::json::parse(r->text);
 
       if (json.contains("pic_ids") && json.contains("pic_infos")) {
         for (const auto& pid : json["pic_ids"]) {
-          res.emplace_back(json["pic_infos"][pid.get<std::string>()]["largest"]["url"].get<std::string>());
+          result.links.emplace_back(json["pic_infos"][pid.get<std::string>()]["largest"]["url"].get<std::string>());
         }
       }
 
@@ -63,7 +64,7 @@ class WeiBo {
             return a["play_info"].value("size", 0.0) < b["play_info"].value("size", 0.0);
           });
           if (best != list.end()) {
-            res.emplace_back((*best)["play_info"]["url"].get<std::string>());
+            result.links.emplace_back((*best)["play_info"]["url"].get<std::string>());
           }
         }
       }
@@ -72,7 +73,7 @@ class WeiBo {
         for (const auto& item : json["mix_media_info"]["items"]) {
           if (item.value("type", "") == "pic") {
             if (item.contains("data") && item["data"].contains("largest") && item["data"]["largest"].contains("url")) {
-              res.emplace_back(item["data"]["largest"]["url"].get<std::string>());
+              result.links.emplace_back(item["data"]["largest"]["url"].get<std::string>());
             }
           } else if (item.value("type", "") == "video") {
             if (item.contains("data") && item["data"].contains("media_info") &&
@@ -82,24 +83,27 @@ class WeiBo {
                 return a["play_info"].value("size", 0.0) < b["play_info"].value("size", 0.0);
               });
               if (best != list.end()) {
-                res.emplace_back((*best)["play_info"]["url"].get<std::string>());
+                result.links.emplace_back((*best)["play_info"]["url"].get<std::string>());
               }
             }
           }
         }
       }
+    } catch (const nlohmann::json::parse_error& e) {
+      LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::ParseError);
     } catch (const std::exception& e) {
       LOG_ERROR("Failed to get download links for {}: {}", url, e.what());
+      result.errors.emplace_back(ErrorCode::UnknownError);
     }
 
-    return res;
+    return result;
   }
 
-  static std::optional<std::filesystem::path> DownloadFile(const std::string_view download_link,
-                                                           const std::filesystem::path& download_dir) {
+  static FileResult DownloadFile(const std::string_view download_link, const std::filesystem::path& download_dir) {
     const auto r = HttpGet(download_link);
     if (!r) {
-      return std::nullopt;
+      return std::unexpected(ErrorCode::HttpError);
     }
 
     const auto url_str = download_link.substr(0, download_link.find('?'));
