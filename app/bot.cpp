@@ -77,6 +77,10 @@ class Bot final : public tgbotxx::Bot {
     const std::vector<std::string> download_links = Platform::GetDownloadLinks(url);
     LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
 
+    if (download_links.empty()) {
+      return;
+    }
+
     std::vector<std::future<std::optional<std::filesystem::path>>> futures;
     futures.reserve(download_links.size());
     for (const auto& link : download_links) {
@@ -94,17 +98,18 @@ class Bot final : public tgbotxx::Bot {
       }
     }
 
-    SendDownloadedFiles(message, url, downloaded_files);
+    SendDownloadedFiles(message, url, downloaded_files, download_links.size());
   }
 
   void SendDownloadedFiles(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string& url,
-                           const std::vector<std::filesystem::path>& downloaded_files) const {
+                           const std::vector<std::filesystem::path>& downloaded_files, size_t total_links) const {
     const auto reply_params = cielparser::MakeReplyParameters(message->messageId);
 
     if (downloaded_files.empty()) {
       cielparser::TryNTimes<1>([&] {
-        api()->sendMessage(message->chat->id, std::format("Fail to download files from {}", url), 0, "", {}, false,
-                           false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
+        api()->sendMessage(message->chat->id,
+                           std::format("{}/{} downloads failed, please retry", total_links, total_links), 0, "", {},
+                           false, false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
       });
       return;
     }
@@ -180,6 +185,14 @@ class Bot final : public tgbotxx::Bot {
     }
     if (!videos.empty()) {
       send_chunks.operator()<true>(videos);
+    }
+
+    if (const size_t failed_count = total_links - downloaded_files.size(); failed_count != 0) {
+      cielparser::TryNTimes<1>([&] {
+        api()->sendMessage(message->chat->id,
+                           std::format("{}/{} downloads failed, please retry", failed_count, total_links), 0, "", {},
+                           false, false, nullptr, "", 0, nullptr, false, "", nullptr, reply_params);
+      });
     }
   }
 
