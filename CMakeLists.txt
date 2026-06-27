@@ -22,7 +22,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 FetchContent_Declare(
         quill
         GIT_REPOSITORY https://github.com/odygrd/quill.git
-        GIT_TAG v11.1.0
+        GIT_TAG v12.0.0
 )
 FetchContent_MakeAvailable(quill)
 

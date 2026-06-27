@@ -14,7 +14,8 @@ namespace cielparser {
 inline quill::Logger* g_quill_logger{};
 
 inline void SetupQuill(const std::filesystem::path& log_path) {
-  const quill::BackendOptions backend_options{.check_printable_char = nullptr};
+  quill::BackendOptions backend_options;
+  backend_options.check_printable_char = nullptr;  // To print Chinese
   quill::Backend::start(backend_options);
   quill::PatternFormatterOptions formatter_options;
   formatter_options.format_pattern = "%(time) %(short_source_location:<16) %(log_level:<9) %(message)";
