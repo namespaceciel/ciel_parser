@@ -1,32 +1,29 @@
 # ciel_parser
 
-A C++23 Telegram bot that automatically detects social media URLs in messages, extracts download links for images and videos, downloads them locally, and sends the media back to the chat.
+A C++23 Telegram bot that detects social media URLs in messages, extracts media download links, and sends the content back to the chat.
 
 ## Supported Platforms
 
 | Platform | URL Patterns |
 |----------|-------------|
-| XiaoHongShu (RED) | `xiaohongshu.com`, `xhslink.com` |
+| XiaoHongShu | `xiaohongshu.com`, `xhslink.com` |
+| Douyin | `v.douyin.com`, `douyin.com/video/`, `douyin.com/note/`, `iesdouyin.com/share/` |
 | Weibo | `weibo.com`, `weibo.cn` |
-| Twitter / X | `twitter.com/*/status/*`, `x.com/*/status/*` |
+| Bilibili | `bilibili.com/video/`, `bilibili.com/opus/`, `b23.tv`, `bili2233.cn` |
+| Twitter / X | `twitter.com/*/status/`, `x.com/*/status/` |
 | Pixiv | `pixiv.net/artworks/<id>` |
-| Bilibili | `bilibili.com/video/*`, `bilibili.com/opus/*`, `b23.tv`, `bili2233.cn` |
-| Douyin | `v.douyin.com/<slug>` |
 
 ## Dependencies
 
-| Dependency | Purpose |
-|-----------|---------|
-| [`telegram-bot-api`](https://github.com/tdlib/telegram-bot-api) | Local Telegram Bot API server (must be in `$PATH`) |
-| Playwright | Headless browser for Douyin (`pip install playwright && playwright install chromium`) |
+- [telegram-bot-api](https://github.com/tdlib/telegram-bot-api) — must be in `$PATH`
 
-### Auto-fetched Libraries (via CMake FetchContent)
+**Auto-fetched by CMake:**
 
-- [nlohmann/json](https://github.com/nlohmann/json) v3.12.0 — JSON parsing
-- [quill](https://github.com/odygrd/quill) v12.0.0 — Async logging
-- [tgbotxx](https://github.com/vir-bjoern/tgbotxx) v1.2.9.5 — Telegram Bot API wrapper
-- [Boost](https://www.boost.org/) 1.90.0 — Process management
-- [gflags](https://github.com/gflags/gflags) v2.3.0 — CLI flag parsing
+- [nlohmann/json](https://github.com/nlohmann/json) v3.12.0
+- [quill](https://github.com/odygrd/quill) v12.0.0
+- [tgbotxx](https://github.com/vir-bjoern/tgbotxx) v1.2.9.5
+- [Boost](https://www.boost.org/) 1.90.0
+- [gflags](https://github.com/gflags/gflags) v2.3.0
 
 ## Build
 
@@ -35,15 +32,15 @@ cmake -S . -B build -G Ninja
 cmake --build build --target ciel_parser_bot
 ```
 
-The output binary is `build/ciel_parser_bot`.
+Binary: `build/ciel_parser_bot`.
 
 ## Configuration
 
-Create a `config.json` file (see `config.json.example` for a template):
+Create `config.json` (see `config.json.example`):
 
 ```json
 {
-    "bot_token": "YOUR_BOT_TOKEN_HERE",
+    "bot_token": "YOUR_BOT_TOKEN",
     "api_id": "YOUR_API_ID",
     "api_hash": "YOUR_API_HASH",
     "tg_api_http_port": "8081",
@@ -54,12 +51,11 @@ Create a `config.json` file (see `config.json.example` for a template):
 
 | Field | Description |
 |-------|-------------|
-| `bot_token` | Telegram Bot API token (from [@BotFather](https://t.me/BotFather)) |
-| `api_id` | Telegram API ID (for local bot API server, obtain from [my.telegram.org](https://my.telegram.org)) |
-| `api_hash` | Telegram API hash (for local bot API server, obtain from [my.telegram.org](https://my.telegram.org)) |
-| `tg_api_http_port` | HTTP port for the local `telegram-bot-api` server |
-| `download_dir` | Directory where downloaded media files are saved |
-| `log_path` | Path to log file (rotating, 1 MB per file) |
+| `bot_token` | From [@BotFather](https://t.me/BotFather) |
+| `api_id` / `api_hash` | From [my.telegram.org](https://my.telegram.org) |
+| `tg_api_http_port` | HTTP port for `telegram-bot-api` |
+| `download_dir` | Downloaded media storage |
+| `log_path` | Rotating log file |
 
 ## Run
 
