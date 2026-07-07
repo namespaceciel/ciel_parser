@@ -54,8 +54,11 @@ class XHS {
         query_string = page_url.substr(q);
       }
 
-      const std::string fetch_url =
-          std::format("https://www.xiaohongshu.com/discovery/item/{}{}", note_id, query_string);
+      static const cpr::Header desktop_headers{
+          {"User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36"},
+          {"Referer", "https://www.xiaohongshu.com/"},
+          {"Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
+      };
 
       static const cpr::Header mobile_headers{
           {"User-Agent",
@@ -68,7 +71,13 @@ class XHS {
           {"sec-fetch-dest", "empty"},
       };
 
-      cpr::Response r = cpr::Get(cpr::Url{fetch_url}, mobile_headers, cpr::Timeout{15000});
+      const bool is_explore = page_url.find("/explore/") != std::string::npos;
+      const std::string fetch_url =
+          is_explore ? std::string{page_url}
+                     : std::format("https://www.xiaohongshu.com/discovery/item/{}{}", note_id, query_string);
+      const cpr::Header& fetch_headers = is_explore ? desktop_headers : mobile_headers;
+
+      cpr::Response r = cpr::Get(cpr::Url{fetch_url}, fetch_headers, cpr::Timeout{15000});
       if (r.status_code != 200) {
         LOG_ERROR("Failed to fetch {}: status={}", fetch_url, r.status_code);
         result.errors.emplace_back(ErrorCode::HttpError);
