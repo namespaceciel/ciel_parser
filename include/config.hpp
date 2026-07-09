@@ -13,8 +13,10 @@ struct Config {
   std::string tg_api_http_port{};
   std::filesystem::path download_dir;
   std::filesystem::path log_path;
+  std::string pixiv_cookie;
 
-  NLOHMANN_DEFINE_TYPE_INTRUSIVE(Config, bot_token, api_id, api_hash, tg_api_http_port, download_dir, log_path);
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(Config, bot_token, api_id, api_hash, tg_api_http_port, download_dir, log_path,
+                                 pixiv_cookie);
 };
 
 }  // namespace cielparser

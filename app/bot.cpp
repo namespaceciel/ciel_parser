@@ -223,6 +223,9 @@ int main(int argc, char* argv[]) {
   if (config.bot_token.empty()) {
     throw std::runtime_error("bot_token is empty in config");
   }
+  if (!config.pixiv_cookie.empty()) {
+    cielparser::Pixiv::cookie = config.pixiv_cookie;
+  }
 
   cielparser::SetupQuill(config.log_path);
   std::filesystem::create_directories(config.download_dir);
