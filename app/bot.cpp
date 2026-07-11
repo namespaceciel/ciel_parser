@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <future>
 #include <optional>
+#include <semaphore>
 #include <span>
 #include <string>
 #include <tgbotxx/tgbotxx.hpp>
@@ -64,14 +65,14 @@ class Bot final : public tgbotxx::Bot {
 
  private:
   template <class Platform>
-  void ProcessMessage(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string_view message_content) const {
+  void ProcessMessage(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string_view message_content) {
     for (const auto urls = Platform::GetUrls(message_content); auto&& url : urls) {
       std::thread(&Bot::ProcessUrl<Platform>, this, message, url).detach();
     }
   }
 
   template <class Platform>
-  void ProcessUrl(const tgbotxx::Ptr<tgbotxx::Message> message, const std::string& url) const {
+  void ProcessUrl(const tgbotxx::Ptr<tgbotxx::Message> message, const std::string& url) {
     constexpr auto platform_name = Platform::NAME;
 
     auto [download_links, errors] = Platform::GetDownloadLinks(url);
@@ -100,7 +101,11 @@ class Bot final : public tgbotxx::Bot {
       }
     }
 
+    upload_sem_.acquire();
+    LOG_INFO("Upload start for {} ({} files, {} errors)", url, downloaded_files.size(), errors.size());
     SendDownloadedFiles(message, url, downloaded_files, download_links.size(), errors);
+    LOG_INFO("Upload done for {}", url);
+    upload_sem_.release();
   }
 
   void SendDownloadedFiles(const tgbotxx::Ptr<tgbotxx::Message>& message, const std::string& url,
@@ -212,6 +217,7 @@ class Bot final : public tgbotxx::Bot {
   }
 
   std::filesystem::path download_dir_;
+  std::binary_semaphore upload_sem_{1};
 };
 
 int main(int argc, char* argv[]) {
