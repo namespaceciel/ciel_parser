@@ -77,34 +77,34 @@ class XHS {
                      : std::format("https://www.xiaohongshu.com/discovery/item/{}{}", note_id, query_string);
       const cpr::Header& fetch_headers = is_explore ? desktop_headers : mobile_headers;
 
-      cpr::Response r = cpr::Get(cpr::Url{fetch_url}, fetch_headers, cpr::Timeout{15000});
-      if (r.status_code != 200) {
-        LOG_ERROR("Failed to fetch {}: status={}", fetch_url, r.status_code);
+      auto r = HttpGet(fetch_url, fetch_headers);
+      if (!r) {
+        LOG_ERROR("Failed to fetch {}", fetch_url);
         result.errors.emplace_back(ErrorCode::HttpError);
         return result;
       }
 
-      const size_t start = r.text.find("window.__INITIAL_STATE__=");
+      const size_t start = r->text.find("window.__INITIAL_STATE__=");
       if (start == std::string::npos) {
         LOG_ERROR("Could not find window.__INITIAL_STATE__= in url {}", fetch_url);
         result.errors.emplace_back(ErrorCode::ParseError);
         return result;
       }
 
-      const size_t json_start = r.text.find('{', start);
+      const size_t json_start = r->text.find('{', start);
       if (json_start == std::string::npos) {
         result.errors.emplace_back(ErrorCode::ParseError);
         return result;
       }
 
-      const size_t json_end = r.text.find("</script>", json_start);
+      const size_t json_end = r->text.find("</script>", json_start);
       if (json_end == std::string::npos) {
         LOG_ERROR("Could not find </script> after __INITIAL_STATE__");
         result.errors.emplace_back(ErrorCode::ParseError);
         return result;
       }
 
-      const std::string raw_json = SanitizeJson(r.text.substr(json_start, json_end - json_start));
+      const std::string raw_json = SanitizeJson(r->text.substr(json_start, json_end - json_start));
       const auto data = nlohmann::json::parse(raw_json);
 
       const auto& note_data = [&]() -> const nlohmann::json& {
@@ -227,7 +227,7 @@ class XHS {
         {"x-requested-with", "XMLHttpRequest"},
     };
 
-    cpr::Response r = cpr::Get(cpr::Url{short_url}, mobile_headers, cpr::Redirect{false}, cpr::Timeout{15000});
+    auto r = cpr::Get(cpr::Url{short_url}, mobile_headers, cpr::Redirect{false});
     if (r.status_code >= 300 && r.status_code < 400 && !r.header["Location"].empty()) {
       LOG_INFO("XHS short link resolved: {} -> {}", short_url, r.header["Location"]);
       return r.header["Location"];

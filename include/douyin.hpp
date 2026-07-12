@@ -79,16 +79,16 @@ class DouYin {
           {"Referer", "https://www.douyin.com/"},
       };
 
-      cpr::Response r = cpr::Get(cpr::Url{share_url}, ios_headers, cpr::Timeout{15000});
-      if (r.status_code != 200) {
-        LOG_ERROR("Failed to fetch {}: status={}", share_url, r.status_code);
+      auto r = HttpGet(share_url, ios_headers);
+      if (!r) {
+        LOG_ERROR("Failed to fetch {}", share_url);
         result.errors.emplace_back(ErrorCode::HttpError);
         return result;
       }
 
       static const std::regex router_re(R"(window\._ROUTER_DATA\s*=\s*(.*?)</script>)");
       std::smatch router_match;
-      if (!std::regex_search(r.text, router_match, router_re) || router_match.size() < 2) {
+      if (!std::regex_search(r->text, router_match, router_re) || router_match.size() < 2) {
         LOG_ERROR("Could not find _ROUTER_DATA in share page for {}", aweme_id);
         result.errors.emplace_back(ErrorCode::ParseError);
         return result;
@@ -187,15 +187,13 @@ class DouYin {
          "Version/16.6 Mobile/15E148 Safari/604.1"},
     };
 
-    cpr::Response r = cpr::Get(cpr::Url{short_url}, ios_headers, cpr::Timeout{15000});
-    if (r.status_code >= 200 && r.status_code < 400 && !r.url.str().empty()) {
-      std::string resolved = r.url.str();
-      if (resolved != short_url) {
-        LOG_INFO("DouYin short link resolved: {} -> {}", short_url, resolved);
-        return resolved;
-      }
+    auto r = HttpGet(short_url, ios_headers);
+    if (r && r->url.str() != short_url) {
+      std::string resolved = r->url.str();
+      LOG_INFO("DouYin short link resolved: {} -> {}", short_url, resolved);
+      return resolved;
     }
-    LOG_ERROR("DouYin short link resolution failed: status={}", r.status_code);
+    LOG_ERROR("DouYin short link resolution failed: status={}", r ? r->status_code : 0);
     return "";
   }
 };
