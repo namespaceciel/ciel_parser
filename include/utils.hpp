@@ -44,12 +44,16 @@ inline std::vector<std::string> GetMatchedUrlsFromPattern(const std::string_view
 
 inline std::optional<cpr::Response> HttpGet(const std::string_view url, const cpr::Header& headers = {},
                                             const cpr::Parameters& params = {}) {
-  cpr::Response r = cpr::Get(cpr::Url{url}, params, headers);
-  if (r.status_code != 200) {
-    LOG_ERROR("Download {} failed, status_code = {}", url, r.status_code);
-    return std::nullopt;
+  static constexpr int kMaxRetries = 3;
+  for (int attempt = 1; attempt <= kMaxRetries; ++attempt) {
+    cpr::Response r = cpr::Get(cpr::Url{url}, params, headers);
+    if (r.status_code == 200 && r.error.code == cpr::ErrorCode::OK) {
+      return r;
+    }
+    LOG_ERROR("Download {} failed (attempt {}/{}), status_code = {}, error.code = {}, error.message = {}", url, attempt,
+              kMaxRetries, r.status_code, std::to_string(r.error.code), r.error.message);
   }
-  return r;
+  return std::nullopt;
 }
 
 inline std::filesystem::path SaveContents(const std::filesystem::path& download_dir, const std::string_view ext,
