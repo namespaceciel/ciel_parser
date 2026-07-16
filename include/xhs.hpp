@@ -170,7 +170,7 @@ class XHS {
 
         const std::string raw_url = item.value("urlPre", item.value("urlDefault", item.value("url", "")));
         if (raw_url.empty()) {
-          LOG_WARNING("raw_url not found in image item");
+          LOG_ERROR("raw_url not found in image item");
           result.errors.emplace_back(ErrorCode::ParseError);
           continue;
         }

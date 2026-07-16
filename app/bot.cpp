@@ -73,10 +73,10 @@ class Bot final : public tgbotxx::Bot {
 
   template <class Platform>
   void ProcessUrl(const tgbotxx::Ptr<tgbotxx::Message> message, const std::string& url) {
-    constexpr auto platform_name = Platform::NAME;
+    cielparser::g_quill_logger->set_mdc("url", url);
 
     auto [download_links, errors] = Platform::GetDownloadLinks(url);
-    LOG_INFO("Processing URL {} in {}, get {} download_links", url, platform_name, download_links.size());
+    LOG_INFO("Get {} download_links", download_links.size());
 
     if (download_links.empty() && errors.empty()) {
       return;
@@ -85,7 +85,9 @@ class Bot final : public tgbotxx::Bot {
     std::vector<std::future<cielparser::FileResult>> futures;
     futures.reserve(download_links.size());
     for (const auto& link : download_links) {
-      futures.emplace_back(std::async(std::launch::async, [this, link] {
+      futures.emplace_back(std::async(std::launch::async, [&] {
+        cielparser::g_quill_logger->set_mdc("url", url);
+
         LOG_INFO("Try downloading {}", link);
         return Platform::DownloadFile(link, download_dir_);
       }));
@@ -102,9 +104,9 @@ class Bot final : public tgbotxx::Bot {
     }
 
     upload_sem_.acquire();
-    LOG_INFO("Upload start for {} ({} files, {} errors)", url, downloaded_files.size(), errors.size());
+    LOG_INFO("Upload begins ({} files, {} errors)", downloaded_files.size(), errors.size());
     SendDownloadedFiles(message, url, downloaded_files, download_links.size(), errors);
-    LOG_INFO("Upload done for {}", url);
+    LOG_INFO("Upload ends");
     upload_sem_.release();
   }
 
