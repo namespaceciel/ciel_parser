@@ -16,7 +16,7 @@
 namespace cielparser {
 
 class XHS {
-  inline static const std::regex url_pattern{R"(https?://(?:www\.)?(?:xiaohongshu|xhslink)\.com/[\w\-./?=&%]+)"};
+  inline static const std::regex url_pattern{R"(https?://(?:www\.)?(?:xiaohongshu|xhslink)\.(?:com|cn)/[\w\-./?=&%]+)"};
 
  public:
   static constexpr std::string_view NAME = "XHS";
@@ -30,7 +30,7 @@ class XHS {
 
     try {
       std::string page_url(url);
-      if (page_url.find("xhslink.com") != std::string::npos) {
+      if (page_url.find("xhslink.") != std::string::npos) {
         page_url = ResolveShortLink(page_url);
         if (page_url.empty()) {
           result.errors.emplace_back(ErrorCode::HttpError);
